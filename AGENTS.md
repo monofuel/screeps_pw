@@ -1,1 +1,112 @@
-we use nim, not python
+# screeps_pw
+
+## Purpose and current scope
+
+Make Screeps a Polyworld/Coworld-shaped game that can be submitted to Softmax
+and run as a league. This repository owns the game integration and league
+package. It is separate from our playing bots and bot-research dashboard.
+
+- Read the workspace `../AGENTS.md` and this file before working here.
+- Read [README.md](README.md) for the proposed design, references, open decisions,
+  and milestones. Proposals are not implemented features or settled game rules.
+- Current work is **planning and documentation only**. Do not add code, build
+  configuration, dependencies, containers, or running services until the user
+  directs implementation. A request to investigate authorizes reading sources.
+- Preserve existing user work. Commit, push, deploy, upload a Coworld release,
+  or create/enable a hosted league only when requested.
+
+## Repository boundaries and reuse
+
+- `screeps_pw` owns the native Screeps policy loading and tournament adapter,
+  finite match rules, replay capture/viewer, Coworld packaging, and integration
+  tests. Use Screeps' existing JavaScript runtime; do not add Bassy or a new
+  observation/action language.
+- `../screeps_bot` owns playing strategies and reusable `src/botlib/` behaviors.
+  Keep reference-policy strategy there where practical; do not create another
+  competing bot framework here. Small bundled policies and protocol fixtures
+  can live with the game package.
+- `../screeps_lib` owns Screeps API bindings. Add missing API bindings there,
+  rather than embedding them in the league adapter.
+- `../screeps_autoresearch` owns the official private World image, isolated World
+  benchmark tooling, and research dashboard. Its engine launcher and completed
+  turn checks are reuse candidates; its benchmark pass/fail rules are not league
+  rules. Read its `AGENTS.md` and `benchmark/CONTRACTS.md` before working there.
+- Read the target repository's instructions before changing any sibling.
+  Leave tutorial repositories and older experiments outside the task.
+- Reference workspace: `~/Documents/Projects/Softmax/`. Start with
+  `coworld-games/coworld-mindustry/` for the original-engine adapter pattern.
+  The active Polyworld engine checkout is
+  `~/src/softmax-polyworld/polyworld/`. Inspect actual interfaces before reuse.
+- Prefer an official Screeps engine integration. Do not reimplement Screeps
+  simulation or port it into a 3D engine without an explicit design decision.
+- Reuse small modules when they fit. Do not copy an entire research runner,
+  fork shared policy infrastructure, or invent a universal game framework to
+  avoid proving the first end-to-end match.
+
+## Language and implementation, once authorized
+
+- Use **Nim, not Python**, for project code, tests, research tools, automation,
+  engine glue, and viewer logic. Do not add handwritten JavaScript/TypeScript
+  source or shell scripts. Existing upstream Screeps JavaScript is a dependency.
+- Generate JavaScript with Nim's JS backend for Node/Screeps integration;
+  generate browser code with the appropriate Nim backend. Edit Nim source,
+  never generated outputs.
+- Participants submit ordinary Screeps JavaScript modules exporting `loop`.
+  Submitted JavaScript is a participant artifact, not permission to author
+  project tooling in JavaScript. Our reference bots remain Nim compiled to JS.
+- Run matches without inter-tick pacing, advancing as soon as the official
+  engine commits the previous turn. End on declared game conditions or completed
+  tick horizon, with no fixed whole-match wall-clock timeout. Do not confuse this
+  with script CPU/memory limits, which are a separate league rule to settle.
+- Use Nimby + Make, never Nimble commands. Keep compiler settings in
+  `config.nims` and dependency paths in the chosen Nimby workspace. Inspect the
+  workspace before syncing; do not move dirty sibling checkouts.
+- Use one grouped import block, ordered standard library, dependencies, local
+  modules. Group related declarations and keep modules small.
+- Let low-level errors propagate. Handle failures at policy, engine, and match
+  boundaries with explicit diagnostics. Never silently discard exceptions.
+
+## Match integrity
+
+- Define and version roster mapping, starting assets, terrain, visibility,
+  actions, budgets, ending conditions, scoring, and ties before publishing.
+  Distinguish game-engine rules from deliberate league-specific rules.
+- Preserve native `Game`, `Memory`, visibility, and intent processing. Let the
+  official runner execute account scripts and the engine resolve their intents.
+  Inspect completed turns before advancing; do not create a second action loop.
+- Retain the official per-account script sandbox and disposable match isolation.
+  Administrative database access belongs to trusted tournament code. Do not run
+  submitted modules directly in the coordinator's Node environment.
+- Settle equal per-account CPU/bucket and memory rules independently of tick
+  pacing. Preserve native execution guards unless the user explicitly chooses
+  to change them. Bound uploads and logs; isolate policy failures and distinguish
+  them from engine/coordinator failures. Existing benchmark isolation alone is
+  not evidence that public untrusted-policy containment has been verified.
+- Treat source/VM failure, illegal game actions, normal loss, and infrastructure
+  error as different outcomes. Decide score treatment explicitly rather than
+  disguising a failed or incomplete run as a completed match.
+- Freeze engine, host, bindings, policy hashes, configuration, seed, and turn
+  horizon for comparisons. A seed alone is not proof of repeatability.
+- Keep league results, earned GCL diagnostics, funding, and physical capability
+  evidence distinct. Existing World benchmark numbers do not establish PvP
+  strength or hosted league standing.
+
+## Verification and operations, once implemented
+
+- Provide thin Make targets backed by Nim automation. Run `make test` in every
+  affected repository; use `make integration` for real disposable-engine checks.
+  Run `make build` for bot changes and compile consumers of binding changes.
+- Check native modules with `nim check`; check game-facing modules with
+  `nim js`. Unit tests, compilation, engine matches, and hosted certification
+  are separate evidence. Do not report one as another.
+- Use disposable worlds with no staging volume or public game/admin ports.
+  Never reset, change speed, or deploy to the persistent private World as part
+  of this project. Keep live research services and their queue settings intact.
+- Keep replays, logs, databases, generated outputs, and bulk diagnostics outside
+  Git, preferably under `~/.local/share/screeps-pw/`. Retain compact commands,
+  versions, hashes, artifact references, and decisions in documentation.
+- Finish replay and private outputs before publishing the results completion
+  marker. Verify the current platform contract locally before requesting a
+  release upload. Certification success is not authorization to publish.
+- Preserve upstream license notices and verify rights for distributed assets.
+  Do not copy proprietary client assets into the replay viewer.
