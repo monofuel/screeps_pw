@@ -1,0 +1,9 @@
+**
+!config.nims
+!nimby.lock
+!src/**
+!tools/config.nims
+!tools/runtimeRoot.nim
+!build/runtime/**
+!build/dependencies/**
+!build/release.json

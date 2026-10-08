@@ -1,0 +1,89 @@
+import
+  std/[json, os, osproc, posix, streams, strutils, tables, tempfiles, times, unittest],
+  replays, rules,
+  ../tools/[common, match]
+
+proc interruptedEpisode(signal: cint, infrastructure: bool) =
+  ## Verify incomplete episodes cannot publish normal results or leak containers.
+  let parent = createTempDir("interrupted-", "", getHomeDir() / ".local/share/screeps-pw/matches")
+  let child = startProcess(Root / "build/match", args = @[
+    Root / "build/players/idle.js", Root / "build/players/idle.js", "--output:" & parent],
+    options = {poStdErrToStdOut})
+  defer: child.close()
+  var directory: string
+  let deadline = epochTime() + 20
+  while true:
+    for kind, path in walkDir(parent):
+      if kind == pcDir: directory = path
+    if directory.len > 0 and fileExists(directory / "progress.json"): break
+    rules.require(epochTime() < deadline and child.running(), "Episode never started")
+    sleep(50)
+  let container = "screeps-pw-" & directory.lastPathPart.toLowerAscii()
+  if infrastructure: discard command(["docker", "kill", "--signal", "KILL", container])
+  else: rules.require(posix.kill(child.processID.cint, signal) == 0, "Could not cancel runner")
+  let log = child.outputStream.readAll()
+  check child.waitForExit() != 0
+  check not fileExists(directory / "results.json")
+  check not fileExists(directory / "match.replay")
+  check container notin command(["docker", "ps", "--all", "--format", "{{.Names}}"])
+  if infrastructure: check "Engine failed" in log
+  else: check "Match cancelled" in log
+
+suite "Disposable official World":
+  test "Exact starts, completed ticks and snapshot playback":
+    let directory = runMatch([Root / "build/players/idle.js", Root / "build/players/idle.js"], 101)
+    let result = parseFile(directory / "results.json")
+    check result["ticks"].getInt == 101
+    check result["scores"] == %*[0, 0]
+    let initial = parseFile(directory / "initial.json")
+    var spawns = 0
+    for entity in initial["objects"]:
+      if entity["type"].getStr == "spawn":
+        inc spawns
+        check entity["store"]["energy"].getInt == 300
+        check entity["room"].getStr in ["W1N1", "W9N9"]
+    check spawns == 2
+    for user in initial["users"]:
+      if user.getOrDefault("username").getStr in ["Seat0", "Seat1"]:
+        check user["cpu"].getInt == 20
+        check user["cpuAvailable"].getInt == 0
+        check not user.hasKey("bot")
+    var replay = openReplay(readFile(directory / "match.replay"))
+    check not replay.header["metadata"]["config"].hasKey("tokens")
+    for tick in [0, 1, 99, 100, 101, 3]:
+      check replay.stateAt(tick).tick == tick
+    let start = replay.stateAt(0)
+    check start.objects.len == initial["objects"].len
+    for entity in initial["objects"]:
+      check start.objects.hasKey(entity["_id"].getStr)
+  test "Policy errors stay private and never terminate native gameplay":
+    run(["nim", "js", "tests/fixtures/throwing.nim"])
+    let directory = runMatch([Root / "build/fixtures/throwing.js", Root / "build/players/idle.js"], 30)
+    check parseFile(directory / "results.json")["ticks"].getInt == 30
+    check "PRIVATE_POLICY_SENTINEL" in readFile(directory / "private/seat-0.log")
+    check "PRIVATE_POLICY_SENTINEL" notin readFile(directory / "private/seat-1.log")
+    check "PRIVATE_POLICY_SENTINEL" notin readFile(directory / "results.json")
+    var replay = openReplay(readFile(directory / "match.replay"))
+    check "PRIVATE_POLICY_SENTINEL" notin $replay.header
+  test "Infinite scripts are bounded by the official runtime":
+    run(["nim", "js", "tests/fixtures/infinite.nim"])
+    let directory = runMatch([Root / "build/fixtures/infinite.js", Root / "build/players/idle.js"], 5)
+    check parseFile(directory / "results.json")["ticks"].getInt == 5
+    check "timed out" in readFile(directory / "private/seat-0.log")
+  test "Native VM denies host modules and process access":
+    run(["nim", "js", "tests/fixtures/sandbox.nim"])
+    let directory = runMatch([Root / "build/fixtures/sandbox.js", Root / "build/players/idle.js"], 3)
+    check parseFile(directory / "results.json")["ticks"].getInt == 3
+    check "SANDBOX_GUARDS_OK" in readFile(directory / "private/seat-0.log")
+    check "HOST_MODULE_EXPOSED" notin readFile(directory / "private/seat-0.log")
+    check "HOST_PROCESS_EXPOSED" notin readFile(directory / "private/seat-0.log")
+  test "Oversized VM allocations remain an account error":
+    run(["nim", "js", "tests/fixtures/heap.nim"])
+    let directory = runMatch([Root / "build/fixtures/heap.js", Root / "build/players/idle.js"], 3)
+    check parseFile(directory / "results.json")["ticks"].getInt == 3
+    let log = readFile(directory / "private/seat-0.log").toLowerAscii()
+    check "memory limit" in log or "allocation failed" in log
+  test "Cancellation removes the disposable world without a completed result":
+    interruptedEpisode(SIGINT, false)
+  test "Engine infrastructure failure is never a completed draw":
+    interruptedEpisode(SIGKILL, true)

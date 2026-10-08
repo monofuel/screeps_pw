@@ -7,11 +7,11 @@ and run as a league. This repository owns the game integration and league
 package. It is separate from our playing bots and bot-research dashboard.
 
 - Read the workspace `../AGENTS.md` and this file before working here.
-- Read [README.md](README.md) for the proposed design, references, open decisions,
-  and milestones. Proposals are not implemented features or settled game rules.
-- Current work is **planning and documentation only**. Do not add code, build
-  configuration, dependencies, containers, or running services until the user
-  directs implementation. A request to investigate authorizes reading sources.
+- Read [README.md](README.md) for the current match contract, commands,
+  references, and measured implementation status.
+- The user has authorized implementing the first league MVP: 6,000 completed
+  ticks, native JavaScript policies, unpaced official simulation, recorded-state
+  3D Polyworld viewing, packaging, certification, and initial hosted operation.
 - Preserve existing user work. Commit, push, deploy, upload a Coworld release,
   or create/enable a hosted league only when requested.
 
@@ -43,7 +43,7 @@ package. It is separate from our playing bots and bot-research dashboard.
   fork shared policy infrastructure, or invent a universal game framework to
   avoid proving the first end-to-end match.
 
-## Language and implementation, once authorized
+## Language and implementation
 
 - Use **Nim, not Python**, for project code, tests, research tools, automation,
   engine glue, and viewer logic. Do not add handwritten JavaScript/TypeScript
@@ -57,7 +57,9 @@ package. It is separate from our playing bots and bot-research dashboard.
 - Run matches without inter-tick pacing, advancing as soon as the official
   engine commits the previous turn. End on declared game conditions or completed
   tick horizon, with no fixed whole-match wall-clock timeout. Do not confuse this
-  with script CPU/memory limits, which are a separate league rule to settle.
+  with script CPU/memory limits. Each seat receives 20 CPU and an empty initial
+  bucket; native replenishment, execution guards, and memory limits remain.
+  Hosted episodes also have the platform's mandatory 100-minute watchdog.
 - Use Nimby + Make, never Nimble commands. Keep compiler settings in
   `config.nims` and dependency paths in the chosen Nimby workspace. Inspect the
   workspace before syncing; do not move dirty sibling checkouts.

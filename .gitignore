@@ -1,0 +1,7 @@
+build/
+dist/
+tmp/
+*.js
+*.wasm
+*.data
+!vendor/**

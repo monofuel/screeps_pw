@@ -1,0 +1,12 @@
+{
+  "round_interval_minutes": 30,
+  "ladder": {
+    "enabled": false,
+    "players_per_user": 2,
+    "scheduler": {"strategy": "team_pair", "insufficient_players": "do_not_run"},
+    "fulfillment": {"allowed_failures": 0.05, "retry_times": 2},
+    "ranking": {"algorithm": "elo", "initial_rating": 1500.0, "k_factor": 32.0,
+      "round_scoring_rule": "mean", "new_version_k_multiplier": 1.0, "new_version_rounds": 0},
+    "divisions": []
+  }
+}

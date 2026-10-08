@@ -1,280 +1,230 @@
 # Screeps PW
 
-Make Screeps a Polyworld/Coworld-shaped game that we can submit to Softmax as a
-league: uploaded policies, bounded matches, explicit results, private policy
-logs, and browser replays.
+Screeps World as a finite Coworld league, with native JavaScript policies and
+recorded-state 3D Polyworld replays.
 
-**Status: planning only.** There is no implementation, runnable package, hosted
-release, or league yet. This document separates inspected references from
-working proposals. Implementation starts when requested.
+The local runner, 3D browser viewer, and Coworld package are implemented.
+**Screeps PW 0.1.0 is published, canonical, and certified on Softmax.** Native
+integration, headless browser checks, and all ten local and hosted certification
+steps pass. The [Competition league](https://softmax.com/observatory/v2?detail=league:league_ac545b38-4caa-4873-a202-769697261f26)
+is enabled with the colony baseline and idle control.
 
-## Direction
+## Game rules
 
-**Decision: keep Screeps' native JavaScript policy system.** Participants upload
-ordinary Screeps modules exporting `loop`, with native `Game`, `Memory`, and
-intent semantics. Do not introduce Bassy or translate the API into BASIC.
-Our own bots and integration tooling remain authored in Nim.
+| Rule | Competition |
+| --- | --- |
+| World | Fresh official default 121-room private World |
+| Players | Two independent accounts; starter bots and their colonies removed |
+| Starts | Seat 0: W1N1 (37,31); seat 1: W9N9 (17,40) |
+| Assets | One spawn containing 300 energy, RCL1, GCL1, empty Memory |
+| Account CPU | 20 CPU; empty initial bucket; native replenishment and execution/memory guards |
+| Duration | Exactly 6,000 completed ticks |
+| Score | Closing cumulative account GCL points minus opening points |
+| Winner | Higher earned GCL wins; equal scores draw |
+| Colony loss | Previously earned points remain; the match continues |
+| Script errors | Native runtime behavior; private diagnostics; the match continues |
+| Gameplay | Native visibility, API, intents, economy and combat |
+| NPCs | Optional NPC spawning jobs disabled for this fixture |
 
-**Decision: run unpaced matches until the declared game ending condition or
-completed-tick horizon.** No inter-tick sleep and no fixed whole-match
-wall-clock timeout. Advance as soon as the previous turn has finished; actual
-CPU utilization and throughput depend on the engine, scripts, and I/O.
-Per-script CPU/memory rules are separate from match pacing.
+The map is asymmetric. League duels evaluate both starting assignments. Each
+episode retains its own scores; there is no survival bonus, elimination win, or
+research-benchmark qualification gate. GCL points are cumulative account points,
+not integer GCL levels, controller levels, or current-level progress.
+The seed is recorded as fixture metadata; v1 uses the fixed default terrain and
+does not reseed native JavaScript randomness.
 
-**Decision: v1 is a two-player Screeps World GCL race on the default small
-private-world map, lasting 36,000 completed ticks.** Highest earned account GCL
-points wins; equal scores draw. Start by adapting the existing isolated runner.
-Polyworld/Coworld supplies the eventual league packaging and replay model;
-adopting it does not require its policy language or renderer.
+## Simulation and playback clocks
 
-The first pushable MVP is a local runner: load two `main.js` files, create their
-accounts in a disposable world, run the match, and write `results.json` with
-scores and runtime errors. Browser replay viewing and hosted league packaging
-are later milestones, not requirements for this first implementation.
+The engine advances immediately after a committed turn, without inter-tick
+sleep or an internal whole-match wall-clock cutoff. Actual throughput depends
+on scripts, engine work, and I/O. Script CPU and memory guards remain enabled.
 
-## What the references establish
+Completed replays default to **10x playback: 10 ticks per second**. A full
+competition replay takes ten minutes. Normal 1x playback is one tick per second.
+Playback speed does not affect simulation or scores.
 
-| Reference | What is useful here | What still needs work |
-| --- | --- | --- |
-| `coworld-mindustry` | Original-engine integration; independent survival and shared 4v4 modes; game-hosted files, private logs, replay package | Reuse packaging/lifecycle ideas while retaining Screeps' own script runtime |
-| Polyworld | Coworld lifecycle, manifest, output finalization, and replay integration | Choose a pinned reuse boundary; its BASIC host is outside this design |
-| `screeps_autoresearch` | Pinned official World image; disposable worlds; native JS policies; Nim-generated Node glue; unpaced completed turns and GCL measurements | Multi-account tournament rules/results and replay capture; current cases are bot benchmarks |
-| `screeps_lib` | Nim World/Arena API bindings and JS compilation conventions | Bind any missing API needed by reference bots or trusted engine glue |
-| `screeps_bot` | Colony behavior and shared movement, spawning, economy, defense, scouting, and expansion utilities | Compile reference entrants using the same native policy interface |
+Hosted episodes have the platform's required watchdog, declared as 100 minutes.
+A killed or incomplete episode does not produce a completed game result.
 
-Mindustry's standalone README still introduces survival, while its guide and
-host also implement shared team PvP. For this design, use the guide, manifest,
-and source together. Its six-tick policy cadence, full-map PvP visibility, team
-layout, scores, and Java determinism patch are game-specific choices.
+## Submit a policy
 
-The relevant Screeps mechanics are already tick-based: actions create intents
-that the engine resolves after player code runs. Its standalone server contains
-multiple cooperating processes. We can retain that loop instead of building
-a new policy bridge.
-See the [official server](https://github.com/screeps/screeps) and
-[game-loop documentation](https://docs.screeps.com/game-loop.html).
+Supply one self-contained JavaScript file, at most 2 MiB, exporting `loop`:
 
-## Proposed runtime
-
-This is the target integration. The first MVP writes results and diagnostics;
-the replay recorder and browser viewer follow later.
-
-```mermaid
-flowchart LR
-  P[Uploaded Screeps JS modules] --> S[Native account script sandboxes]
-  S -->|native intents| E[Official World engine]
-  C[Nim tournament coordinator] -->|fixture and roster| E
-  E -->|completed turns| C
-  C --> R[Replay and result recorder]
-  R --> V[Browser replay viewer]
+```javascript
+module.exports.loop = function () {
+  // Ordinary Screeps World account code.
+};
 ```
 
-The coordinator and engine hooks are authored in Nim; Node-facing hooks compile
-with Nim's JS backend. Submitted policies execute through the official runner,
-never by importing them into the coordinator's ordinary Node environment.
-Screeps owns account observations, visibility, script execution, memory, API
-return codes, and intent validation/resolution. The tournament layer owns
-initial state, seat/account mapping, turn horizon, ending rules, and artifacts.
+Participants may author JavaScript. Project tooling, fixtures, and our reference
+bots are authored in Nim; generated JavaScript stays outside Git.
 
-For each turn, let the official runner finish account scripts, let the engine
-process their intents and commit state, then inspect that completed state for
-recording and terminal conditions. Queue the next turn immediately when the
-match continues. Preserve the engine's conflict rules and account isolation.
+The official runner provides `Game`, `Memory`, `RawMemory`, and intent
+processing. Submitted code is account code, not a server mod, npm package, or
+native process. It runs in the official per-account sandbox. Private logs are
+bounded to 10 MiB per seat and never included in the public replay.
 
-## Existing speed and sandbox mechanisms
+Bundled players are the existing `screeps_bot` World colony strategy and a
+Nim-generated idle control. Multi-module uploads and human gameplay controls
+are outside v1.
 
-These are inspected source facts, not new implementation:
+With an authenticated Softmax account, upload and submit a compiled policy:
 
-- `../screeps_autoresearch/runtime/turnScheduler.nim` replaces the official
-  coordinator's between-turn `setTimeout(loop, ...)` with `setImmediate` after
-  `mainLoopStage=finish`. Unrelated timers remain intact. This removes timed
-  pacing while yielding for worker and I/O progress.
-- `runtime/control.nim` awaits committed-turn checks through
-  `mainLoopCustomStage`, records progress, and stops the engine at the declared
-  terminal boundary. Preserve that ordering for tournament results and replays.
-- `src/benchmarkRunner.nim` runs a fresh container with `--network none`, a
-  disposable `/world` tmpfs, host-UID execution, read-only input files, and an
-  episode-only output mount. It does not mount the staging world or Docker socket.
-- The benchmark runner currently requires a positive wall-clock timeout and
-  kills the container if it expires. That is distinct from the unpaced scheduler;
-  the tournament design removes this fixed whole-match cutoff. Existing
-  benchmark behavior is unchanged.
-- Benchmark fixtures currently grant the candidate account 20 Screeps CPU.
-  Removing inter-tick pacing does not remove that script budget.
+```sh
+nim r tools/sdk.nim upload-policy --file /absolute/path/to/policy.js --name my-screeps-policy
+nim r tools/sdk.nim submit my-screeps-policy:v1 --league league_ac545b38-4caa-4873-a202-769697261f26 --no-open-browser
+```
 
-Upstream Screeps uses a per-account `isolated-vm` runtime, with heap and script
-execution limits. This is the existing script sandbox to retain, alongside
-disposable match containers. See the official
-[VM implementation](https://github.com/screeps/driver/blob/master/lib/runtime/user-vm.js)
-and [execution path](https://github.com/screeps/driver/blob/master/lib/runtime/make.js).
-Verify the exact pinned driver during implementation; these upstream references
-are not an audit of our built image or proof of public-policy containment.
+Policy versions belong to the uploading player. For another owned player,
+`nim r tools/playerUpload.nim PLAYER_ID POLICY_FILE POLICY_NAME` uses a private
+temporary credential directory and leaves the shared active player unchanged.
+Submit that version with `--player PLAYER_ID`, or use the Observatory. Each user
+may field two players.
 
-Keep three controls distinct:
+## Build and run locally
 
-| Control | Tournament direction |
-| --- | --- |
-| Inter-tick pacing | None; continue after the previous turn commits |
-| Whole-match wall-clock cutoff | None; finish by game rules or completed-tick horizon |
-| Per-account CPU/bucket, memory, and script execution guards | Separate league decision; retain native guards unless explicitly changed |
+Use Linux, Docker, Nim 2+, Nimby 0.2.3+, Make, and sha256sum. The browser build
+uses the pinned Nix toolchain when Emscripten is absent.
 
-An unbounded script that never returns prevents a turn from completing, so
-removing every execution guard would require a separate decision. Full-speed
-simulation does not require that change. Cancellation and engine failure still
-need cleanup; neither creates a normal completed match result.
+```sh
+make deps
+make build
+build/match build/players/baseline.js build/players/idle.js
+build/match build/players/idle.js build/players/baseline.js
+make test
+make integration
+make viewer
+make browser-test REPLAY=/absolute/path/to/match.replay
+```
 
-## Submission interface
+The runner accepts `--ticks:NUMBER`, `--seed:NUMBER`, `--output:DIRECTORY`,
+and `--image:IMAGE`. Short horizons are for smoke checks; competition uses
+6,000 ticks. Artifacts default to `~/.local/share/screeps-pw/matches/`.
 
-Use one self-contained `main.js` exporting `loop` per player for the MVP,
-matching the current benchmark input and our Nim-compiled World bot. Support
-multi-module bundles later if needed, with defined entrypoint, size limits,
-and module-name validation. Submitted code runs as account code, not a server
-mod, npm installation, or arbitrary native process.
+The default engine image is the frozen official image used by autoresearch,
+with Screeps revision `7ff972231c0a0a7aa91978297432ddb806976281`. It must already
+be built locally from `screeps_autoresearch/Dockerfile.screeps`.
+Matches use disposable storage, no network, and no staging volume or game/admin
+ports. Cancellation cleans up the episode container.
 
-Keep native `Game`, `Memory`, `RawMemory`, and account visibility. Reference
-policies can reuse `screeps_bot/src/botlib/` directly through their Nim JS builds;
-the game does not automatically run our colony strategy for all entrants.
-Do not add new handle mappings, translated action APIs, or alternate policy
-cadences. Logs and upload sizes still need bounds. Any restricted gameplay API
-or full-map observation variant must be an explicit game-rule decision.
+`make deps` creates a separate Nimby workspace under
+`~/.local/share/screeps-pw/deps/`. It does not move shared workspace checkouts.
+`SCREEPS_PW_DEPS` overrides that location. Node glue imports the small
+`nodeBridge`, `nativeJson`, and `turnScheduler` modules from
+`SCREEPS_AUTORESEARCH` or the sibling checkout.
 
-## V1 match rules: fixed-length GCL race
+## 3D viewer
 
-| Rule | V1 decision |
-| --- | --- |
-| World | One fresh default small private-world map, with its existing 121 rooms; no custom map generator or mirrored terrain |
-| Players | Two independent accounts in the same world, each controlled by one submitted module; remove the starter `simplebot` accounts |
-| Start | Fixed starting rooms; one spawn and GCL1 each, identical starting energy, empty policy Memory, and equal CPU/bucket and memory settings |
-| Duration | Exactly 36,000 completed engine ticks, unpaced, with no fixed whole-match wall-clock cutoff |
-| Gameplay | Ordinary Screeps World visibility, actions, economy, and combat |
-| Score | Final cumulative account GCL points minus that account's cumulative points at match start |
-| Winner | Higher score wins; equal scores draw |
-| Colony loss | No elimination ending, survival bonus, or score reset; previously earned points still count |
+The Nim/WASM viewer uses Polyworld's RTS camera and shared HUD theme. Terrain
+walls rise above a room board; buildings and creeps use procedural geometry and
+ownership/body-part colors. The world minimap selects rooms. Click objects for
+inspection, pan with arrow keys or the middle mouse button, and zoom with the
+wheel. The bottom bar controls play, pause, stepping, seeking, looping and speed.
 
-The 36,000-tick horizon reuses the existing clean-start `economy` benchmark's
-duration. This is a starting competition contract, not a claim that the horizon
-has already been validated for multiplayer balance or expansion.
+The replay records the shared authoritative world once, including tick 0 and
+every completed tick. Static terrain is stored once. Independently compressed
+100-tick chunks begin with full keyframes and continue with entity upserts and
+removals. The decoder reconstructs recorded state without running a Screeps
+server or resimulating intents. Policy source, Memory, tokens and console
+messages are excluded from replay entity data.
 
-Read cumulative GCL points from the authoritative server account state. Do not
-score integer GCL level, room-controller level, or only the current level's
-progress. Taking the opening-to-closing difference excludes starting grants
-without losing progress across level transitions. Controller upgrading earns
-GCL, and earned GCL survives colony loss under the
-[native rules](https://docs.screeps.com/control.html).
+The static bundle reads the replay URL from `#replay=`, with query fallback,
+and reports readiness after displaying a valid frame. Browser viewing requires
+serving the bundle over HTTP. There is no live 3D viewer in v1.
 
-Score the full match, including production before any colony loss. Do not import
-the research benchmarks' recovery score windows, capability gates, or funding
-qualification into this league. There is no separate PvP victory condition or
-weighted combat/economy score.
+`make browser-test` starts disposable headless Chromium and a loopback HTTP
+server on ports 8770 and 8769, checks a full 6,000-tick replay, then stops both.
+It verifies visible geometry, normal/default playback clocks, pause, stepping,
+timeline seeking, room switching, resizing, and visible missing-replay errors.
+Screenshots and browser profiles stay under `~/.local/share/screeps-pw/`.
 
-Record the exact starting rooms, spawn positions, starting energy, CPU/bucket
-settings, map identity, and initial account points in match metadata. Select and
-freeze those fixture details during implementation. For comparisons, run a
-second match with policies swapped between the two starting positions; each
-episode keeps its own scores. A custom balanced map can wait.
+The league's episode page opens the hosted 3D viewer. The CLI can print its
+viewer link without launching a desktop browser:
 
-Capture script runtime errors per account and preserve native execution behavior;
-a script error alone does not end the match or erase earned points. Engine
-failure or cancellation produces an incomplete/error result, not a completed
-winner or draw.
+```sh
+nim r tools/sdk.nim replay-open ereq_1cda007f-f4ed-455f-a132-efe2add8216f --hosted --no-open-browser
+```
 
-More players, teams, alternative scoring, persistent worlds, richer maps, and
-additional submission formats are outside the first MVP. Platform standings
-configuration is a later packaging decision; the local match already defines
-its scores, winner, and ties.
+Set `SCREEPS_PW_VIEWER_URL` when running `make browser-test` to check a hosted
+viewer session instead of the local bundle. This was verified against the
+published 0.1.0 viewer and its hosted replay.
 
-## Coworld package and replays
+## Coworld package
 
-Follow the game-hosted file-player contract seen in Mindustry. Its manifest
-requests `coworld-player-seats/2`; verify the current platform schema before
-implementation. The runner stages policies and supplies local file URIs through
-`COGAME_CONFIG_URI`, `COGAME_PLAYER_SEATS_URI`, `COGAME_RESULTS_URI`,
-`COGAME_SAVE_REPLAY_URI`, and `COGAME_PLAYER_FAILURE_URI`.
+```sh
+make package
+make certify
+```
 
-After the local MVP, the hosted package needs a pinned game image, config/results schemas, declared
-variant and seat mapping, a complete player guide, working baseline policies,
-private per-seat logs/status, optional annotations, health endpoint, replay
-viewer bundle, and certification fixture. It does not need per-player containers
-or gameplay WebSockets if the game-hosted model is adopted.
+Set `VERSION` for later immutable releases, for example
+`make package VERSION=0.1.1`.
 
-Keep malformed source, exhausted policy budgets, illegal actions, colony loss,
-and engine/coordinator failure distinct. Define policy-disable and forfeiture behavior
-against the platform contract. An infrastructure timeout cannot become a normal
-completed draw. Close private outputs and finish the replay before atomically
-publishing the results completion marker.
+Packaging uses the pinned Coworld SDK through an isolated uv tool environment.
+Set `COWORLD_SOURCE` to the checked-out SDK package when its default workspace
+location differs. Coworld and its `softmax-cli` auth dependency are both loaded
+from the pinned source checkout; the auth override preserves support for
+`SOFTMAX_CONFIG_DIR`. The tested SDK revision is
+`d9d2a9a91131e7ef2f7c9ef6ac35c53775a5a386`.
 
-Propose a browser viewer authored in Nim, initially using a readable 2D room
-grid. Record authoritative snapshots/deltas and action outcomes; playback should
-not need to run a World server or reproduce its process scheduling. Include
-room navigation, seat perspective, timeline, play/pause, seeking, and speed.
-Keep private source and policy logs out of public replays.
+The game image owns both policy VMs and all engine processes. No nested Docker
+or separate player pods are required. The package declares the
+`coworld-player-seats/2` file-player contract, a 6,000-tick competition variant,
+a 600-tick certification fixture, private seat logs/status, a health endpoint,
+global WebSocket Ping/Pong, and a static replay bundle.
 
-Record engine/host/bindings versions, policies' hashes, fixture/configuration,
-seed, completed ticks, and final results. Compare fresh repeated runs before
-claiming deterministic resimulation. Saved-frame playback can be repeatable
-without asserting that the original server is deterministic.
+The runtime image extracts the exact official Node binary, engine installation,
+shared libraries and license documentation from the frozen autoresearch image.
+It is about 487 MB instead of carrying the 4 GB build environment. Its full
+6,000-tick control produced the same 32,416 points as the original image.
 
-## First pushable MVP
+Replay and private outputs finish before the atomic results completion marker.
+The lifecycle server stays available until the platform stops it. The generated
+SDK viewer hook is a Nim executable at the required
+`tools/build_replay_viewer.sh` path; no authored shell script is used.
 
-Implement only the local two-player runner when coding is requested:
+The initial league configuration is one Competition division, paired duels,
+Elo 1500/K32 without margin weighting, and a thirty-minute round cadence.
+Rounds wait for two eligible entrants. The published Coworld name is the literal
+`Screeps PW`, including spaces and capitalization.
 
-1. Accept two self-contained Screeps modules exporting `loop`.
-2. Create a disposable default world, remove starter bots, and initialize the
-   two accounts with the same declared starting assets and CPU settings.
-3. Run their native scripts and the official engine without tick pacing.
-4. Inspect completed turns and stop exactly after 36,000 ticks.
-5. Write `results.json` containing completion status, completed ticks, scores
-   in player order, winner/draw, and runtime-error diagnostics. Retain policy
-   hashes and the frozen fixture/engine identity for reproducing the match.
-6. Clean up only the disposable match resources.
+## Verification evidence
 
-Acceptance is a full local match with trustworthy GCL deltas and terminal tick
-count. Also verify equal scores yield a draw and an interrupted/failed engine
-cannot publish a completed winner. No browser viewer, web service, Coworld
-manifest, certification, or hosted league is required for this first pushable
-slice. Commit and push remain separate requested actions.
+Two full 6,000-tick baseline-versus-idle matches completed on the initial build:
 
-## Milestones toward a hosted league
+| Baseline start | Earned GCL | Idle GCL | Engine wall time |
+| --- | ---: | ---: | ---: |
+| W1N1 | 32,416 | 0 | 165 seconds |
+| W9N9 | 16,792 | 0 | 168 seconds |
 
-| Step | Evidence needed to finish |
-| --- | --- |
-| Local MVP | Two native modules complete the GCL race in a disposable default World; results contain authoritative scores and exactly 36,000 completed ticks |
-| Validate comparisons | Swap starting positions, inspect errors and score evidence, and verify native account isolation and equal CPU settings |
-| Package and replay locally | Full match, private logs, finalized results, and a seekable browser replay; platform contract tests and local certification pass |
-| Prepare a release for review | Frozen sources/image, guide, baseline and idle controls, measured match cost, repeatability evidence, and certification report |
-| Submit when requested | Hosted certification/smoke succeeds; record canonical release and league IDs, standings settings, and baseline/filler roles before enabling scheduling |
+These are integration controls, not hosted standings or claims of deterministic
+timing. Exact policy/adapter/image hashes and fixtures are retained with each
+match. Preserve both starting assignments when comparing policies.
 
-Once code exists, provide `make test`, `make build`, and `make integration`
-backed by Nim automation and Nimby. Native modules use `nim check`; engine-facing
-modules use `nim js`. Real engine tests use disposable worlds. No build/test
-commands for this repository exist yet.
+The final runtime repeated the W1N1 control with exactly 32,416 earned points
+over 6,000 ticks. Integration checks also cover exact starting assets, chunk
+boundaries and backwards seeks, private script errors, infinite-loop and heap
+guards, denied host modules/process access, cancellation cleanup, and engine
+failure without completed results. The 600-tick Coworld fixture scored 290:0.
+See [the verification record](coworld/VERIFICATION.md) for frozen hashes,
+commands, and compact artifact references.
 
-Keep artifacts under `~/.local/share/screeps-pw/` and retain compact evidence
-references in Git. Never attach the persistent staging volume or alter live
-research services. Preserve license notices for reused host and engine code;
-choose viewer assets with distributable licenses.
+The first hosted Competition round completed both 6,000-tick starting
+assignments, scoring the same 32,416:0 and 16,792:0 as the local controls.
+Softmax published colony MMR 1516 and idle MMR 1484. The hosted replay also
+passes the full browser checks. These two starter policies establish operation;
+they do not measure strength against independent submissions.
 
-## Source references
+## References and ownership
 
-Inspected during planning on 2026-10-08; source observations above describe
-these local versions, not a guarantee about future upstream interfaces.
+Mindustry's Coworld wrapper is the reference for original-engine lifecycle,
+shared-world replay chunks, and output finalization. Its BASIC policy interface
+and game rules are not used here.
 
-- Mindustry: `~/Documents/Projects/Softmax/coworld-games/coworld-mindustry/`,
-  commit `65ec87f5322bbda2676bdea981b3a558af16d88d`.
-  Start with `coworld/mindustry/guide.md`, `examples/mindustry/mindustry.nim`,
-  `examples/mindustry/replays.nim`, and the manifest template.
-- Active Polyworld: `~/src/softmax-polyworld/polyworld/`, commit
-  `d46a6266ef9164ced5bdafc724d9782ef8c80d8e`.
-  Start with `readme.md`, `coworld/integration.md`, and
-  `src/polyworld/coworld.nim`. Its policy-host modules are references for
-  understanding the integration, not selected runtime dependencies.
-- [Screeps bindings](../screeps_lib/README.md),
-  [World bot](../screeps_bot/src/world/README.md), and
-  [isolated benchmark contracts](../screeps_autoresearch/benchmark/CONTRACTS.md).
-  Relevant engine glue is in `../screeps_autoresearch/runtime/`; its official
-  image recipe is `../screeps_autoresearch/Dockerfile.screeps`.
-- Research principles: `~/Documents/Projects/Softmax/autoresearch/README.md`
-  and `docs/tenets.md`; campaign tooling:
-  `~/Documents/Projects/Softmax/coworld-autoresearch/README.md` and
-  `docs/research-goals-and-ideas.md`. Reuse their evidence discipline rather
-  than copying their hosted operations or bot-specific permissions.
+Polyworld supplies camera and graphical UI modules. Screeps owns simulation.
+`screeps_autoresearch` owns the official image and research benchmarks;
+`screeps_bot` owns strategies and shared bot utilities; `screeps_lib` owns
+game bindings. The league adapter does not change staging or research services.
+
+See [THIRD_PARTY.md](THIRD_PARTY.md) for pinned code/assets and license notices.
+Persistent worlds, custom balanced maps, additional players, richer models,
+live visualization, and additional submission formats are later work.
