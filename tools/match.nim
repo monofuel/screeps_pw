@@ -3,7 +3,7 @@ import
   rules,
   ./common
 
-const DefaultImage* = "sha256:bce4a765cd4cc81b25b5c90b153c6bfb9b3a39650199dfd0b02f476f714cfa2d"
+const DefaultImage* = "public.ecr.aws/q5f4m8t9/cogames@sha256:a99178510203da99bf58b48d545c3b3e025a33aeb78f51f0262d543516a9c5d6"
 
 var interrupted = false
 

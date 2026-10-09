@@ -206,3 +206,26 @@ build/match build/players/baseline.js build/players/baseline.js --output:/home/m
 nim r tools/sdk.nim --elevated upload-coworld dist/coworld_manifest.json --visibility public --wait-certification
 nim r tools/replay.nim /home/monofuel/.local/share/screeps-pw/4x4-hosted.replay
 ```
+
+## Public source preparation — 2026-10-09 UTC
+
+The public repository includes the full colony example, World bindings and
+three runtime helpers as source snapshots (revisions in `THIRD_PARTY.md`).
+Builds no longer read sibling repositories. Local matches and Docker packages
+use the immutable public 0.1.2 engine runtime from ECR; the SDK wrapper defaults
+to public `coworld[auth]==0.1.56`.
+
+`make build`, `make test` (nine checks), and `make integration` (eight official
+engine checks) pass. An independent source copy under `/var/tmp`, with no
+ancestor workspace configuration, also compiles the bot, builds the native
+adapter, passes unit checks and builds the WASM viewer using pinned dependencies.
+A 600-tick colony-versus-idle match from the standalone `/tmp` source copy
+scores `[290,0]`, matching the existing certification control. Its artifacts are
+`~/.local/share/screeps-pw/matches/20261009T020216Z-t72aZ7nE/`.
+
+`make package VERSION=0.1.2` builds using the public runtime and public SDK.
+`make certify` passes all ten executable steps, with artifacts at
+`~/.local/share/screeps-pw/certification/tmp/coworld-cert-n2a_wlkf/`.
+The browser checks pass against the previous full 4×4 competition replay;
+the resulting image is included at `docs/viewer.png`.
+This preparation does not upload a new Coworld or change the hosted league.

@@ -3,9 +3,11 @@ NIM ?= nim
 VERSION ?= 0.1.2
 GAME_IMAGE ?=
 
-.PHONY: deps build test integration viewer browser-test package certify check
+.PHONY: deps engine build test integration viewer browser-test package certify check
 deps:
 	$(NIM) r tools/deps.nim
+engine:
+	$(NIM) r tools/engine.nim
 build:
 	$(NIM) r tools/build.nim
 check:

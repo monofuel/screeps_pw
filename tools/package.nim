@@ -1,7 +1,7 @@
 import
   std/[json, os, strutils],
   rules,
-  ./[common, sdk]
+  ./[common, match, sdk]
 
 proc main() =
   ## Stage the native image, verified file players, and generated viewer hook.
@@ -22,16 +22,16 @@ proc main() =
       let destination = Root / "build/dependencies" / dependency
       if dirExists(destination): removeDir(destination)
       copyDir(dependencies / dependency, destination)
-    let base = "sha256:bce4a765cd4cc81b25b5c90b153c6bfb9b3a39650199dfd0b02f476f714cfa2d"
-    discard command(["docker", "tag", base, "screeps-pw-engine:7ff9722"])
+    let base = command(["docker", "image", "inspect", "--format", "{{.Id}}", DefaultImage])
     let release = %*{"version": version, "engineImage": base,
       "engineRevision": "7ff972231c0a0a7aa91978297432ddb806976281",
-      "sdkRevision": "d9d2a9a91131e7ef2f7c9ef6ac35c53775a5a386",
+      "sdkVersion": "0.1.56",
       "baselineSha256": hashFile(Root / "build/players/baseline.js"),
       "adapterSha256": [hashFile(Root / "build/runtime/launcher.js"), hashFile(Root / "build/runtime/control.js")],
       "dependenciesSha256": hashFile(Root / "nimby.lock")}
     writeFile(Root / "build/release.json", $release)
-    run(["docker", "build", "--file", "coworld/Dockerfile", "--tag", image, Root])
+    run(["docker", "build", "--file", "coworld/Dockerfile", "--build-arg",
+      "ENGINE_IMAGE=" & DefaultImage, "--tag", image, Root])
   for player in ["baseline", "idle"]:
     copyFile(Root / "build/players" / (player & ".js"), stage / "players" / (player & ".js"))
   run(["nim", "c", "--out:" & stage / "tools/build_replay_viewer.sh", "tools/viewer.nim"])

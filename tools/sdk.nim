@@ -4,8 +4,11 @@ import
 
 proc sdkCommand*(arguments: openArray[string]): seq[string] =
   ## Invoke the upstream SDK in an isolated uv tool environment.
-  let source = getEnv("COWORLD_SOURCE", getHomeDir() /
-    "Documents/Projects/Softmax/metta/packages/coworld")
+  let source = getEnv("COWORLD_SOURCE")
+  if source.len == 0:
+    result = @["uv", "tool", "run", "--from", "coworld[auth]==0.1.56", "coworld"]
+    result.add arguments
+    return
   if not dirExists(source): raise newException(IOError, "Set COWORLD_SOURCE to the pinned Coworld package")
   let revision = command(["git", "-C", source, "rev-parse", "HEAD"])
   if revision != "d9d2a9a91131e7ef2f7c9ef6ac35c53775a5a386":

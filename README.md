@@ -3,9 +3,37 @@
 Screeps World as a finite Coworld league, with native JavaScript policies and
 recorded-state 3D Polyworld replays.
 
-The local runner, 3D browser viewer, and Coworld package are implemented.
-The game is published on Softmax. The [Competition league](https://softmax.com/observatory/v2?detail=league:league_ac545b38-4caa-4873-a202-769697261f26)
-is enabled with two colony players. Idle remains a test control.
+The game is running on Softmax. [Join the Competition league](https://softmax.com/observatory/v2?detail=league:league_ac545b38-4caa-4873-a202-769697261f26)
+or start with the [colony example](players/colony/main.nim).
+This repository contains the complete game adapter, example bot source, World
+bindings, 3D replay viewer, tests, and Coworld packaging. The official open-source
+[Screeps server](https://github.com/screeps/screeps) supplies the simulation.
+
+![3D room view beside the detailed 4×4 world map](docs/viewer.png)
+
+## Start with the example bot
+
+Clone the repo and compile the colony bot with Nim 2+; this step needs neither
+Docker nor the viewer dependencies:
+
+```sh
+git clone https://github.com/monofuel/screeps_pw.git
+cd screeps_pw
+nim js players/colony/main.nim
+```
+
+The output is `build/players/baseline.js`, ready to submit. The bot harvests,
+spawns workers, builds infrastructure, upgrades controllers, scouts, and runs
+remote operations. Change [worldStrategy.nim](players/colony/worldStrategy.nim)
+or the shared behaviors in [botlib](players/colony/botlib), then compile again.
+The required Nim World bindings are included in `players/colony/bindings`.
+There is also an [idle control](players/idle.nim) for integration checks.
+
+For a quick trial, [download the compiled baseline from the running league](https://softmax.com/api/observatory/v2/coworlds/cow_dede9385-2a54-495b-95ab-208c59a032e2/player-files/3b53a1030e53edf2a1098628cc0c5e735c13e5974474d798b2f430921432ee4e)
+and save it as `baseline.js`. Use that filename in the upload command below.
+
+You can instead bring any existing Screeps World bot that bundles into one
+CommonJS file. See the [official Screeps API](https://docs.screeps.com/api/).
 
 ## Game rules
 
@@ -66,16 +94,21 @@ processing. Submitted code is account code, not a server mod, npm package, or
 native process. It runs in the official per-account sandbox. Private logs are
 bounded to 10 MiB per seat and never included in the public replay.
 
-Bundled players are the existing `screeps_bot` World colony strategy and a
-Nim-generated idle control. Multi-module uploads and human gameplay controls
-are outside v1.
+Bundled players are the full World colony example and a Nim-generated idle
+control. Multi-module uploads and human gameplay controls are outside v1.
 
-With an authenticated Softmax account, upload and submit a compiled policy:
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/), sign into
+your own Softmax account, upload a policy, and submit the returned version:
 
 ```sh
-nim r tools/sdk.nim upload-policy --file /absolute/path/to/policy.js --name my-screeps-policy
-nim r tools/sdk.nim submit my-screeps-policy:v1 --league league_ac545b38-4caa-4873-a202-769697261f26 --no-open-browser
+uv tool run --from 'coworld[auth]==0.1.56' softmax login
+uv tool run --from 'coworld[auth]==0.1.56' coworld upload-policy --file build/players/baseline.js
+uv tool run --from 'coworld[auth]==0.1.56' coworld submit YOUR_POLICY_REF --league league_ac545b38-4caa-4873-a202-769697261f26 --no-open-browser
 ```
+
+Replace `YOUR_POLICY_REF` with the exact `name:vN` printed by `upload-policy`.
+You do not need Docker, Nim, or a game build to upload an existing JavaScript
+bot. Watch completed matches from the league's episode pages.
 
 Policy versions belong to the uploading player. For another owned player,
 `nim r tools/playerUpload.nim PLAYER_ID POLICY_FILE POLICY_NAME` uses a private
@@ -90,6 +123,7 @@ uses the pinned Nix toolchain when Emscripten is absent.
 
 ```sh
 make deps
+make engine
 make build
 build/match build/players/baseline.js build/players/idle.js
 build/match build/players/idle.js build/players/baseline.js
@@ -103,17 +137,18 @@ The runner accepts `--ticks:NUMBER`, `--seed:NUMBER`, `--output:DIRECTORY`,
 and `--image:IMAGE`. Short horizons are for smoke checks; competition uses
 6,000 ticks. Artifacts default to `~/.local/share/screeps-pw/matches/`.
 
-The default engine image is the frozen official image used by autoresearch,
-with Screeps revision `7ff972231c0a0a7aa91978297432ddb806976281`. It must already
-be built locally from `screeps_autoresearch/Dockerfile.screeps`.
+`make engine` pulls the immutable public runtime from the published 0.1.2
+Coworld package. Its upstream Screeps revision is
+`7ff972231c0a0a7aa91978297432ddb806976281`, with engine 4.3.0, driver 5.3.0,
+and Node 22.23.2. No private repositories or registry login are required.
 Matches use disposable storage, no network, and no staging volume or game/admin
 ports. Cancellation cleans up the episode container.
 
 `make deps` creates a separate Nimby workspace under
 `~/.local/share/screeps-pw/deps/`. It does not move shared workspace checkouts.
-`SCREEPS_PW_DEPS` overrides that location. Node glue imports the small
-`nodeBridge`, `nativeJson`, and `turnScheduler` modules from
-`SCREEPS_AUTORESEARCH` or the sibling checkout.
+`SCREEPS_PW_DEPS` overrides that location. The small Node bridge, JSON decoder,
+and turn scheduler are included in `runtime/shared`. All required bot source
+is included; the build does not read sibling repositories.
 
 ## 3D viewer
 
@@ -172,16 +207,17 @@ make certify
 Set `VERSION` for later immutable releases, for example
 `make package VERSION=0.1.2`.
 
-For a viewer-only release, reuse the frozen game image with
-`make package VERSION=0.1.1 GAME_IMAGE=screeps-pw:0.1.0`. This changes the viewer
-and manifest version while retaining the exact simulation runtime.
+Run `make deps` and `make engine` first. Packaging rebuilds the adapter on top
+of the pinned public engine runtime. Building and certifying locally do not
+publish a release or change the running league.
 
-Packaging uses the pinned Coworld SDK through an isolated uv tool environment.
-Set `COWORLD_SOURCE` to the checked-out SDK package when its default workspace
-location differs. Coworld and its `softmax-cli` auth dependency are both loaded
-from the pinned source checkout; the auth override preserves support for
-`SOFTMAX_CONFIG_DIR`. The tested SDK revision is
-`d9d2a9a91131e7ef2f7c9ef6ac35c53775a5a386`.
+For a viewer-only package, pass `GAME_IMAGE` to reuse an existing game image.
+
+Packaging uses public `coworld[auth]==0.1.56` through an isolated uv environment.
+`nim r tools/sdk.nim ...` wraps the same CLI. Maintainers may explicitly set
+`COWORLD_SOURCE` to the original tested source checkout at
+`d9d2a9a91131e7ef2f7c9ef6ac35c53775a5a386`; its adjacent `softmax-cli` package
+must also be present. This override is optional.
 
 The game image owns both policy VMs and all engine processes. No nested Docker
 or separate player pods are required. The package declares the
@@ -189,9 +225,8 @@ or separate player pods are required. The package declares the
 a 600-tick certification fixture, private seat logs/status, a health endpoint,
 global WebSocket Ping/Pong, and a static replay bundle.
 
-The runtime image extracts the exact official Node binary, engine installation,
-shared libraries and license documentation from the frozen autoresearch image.
-It is about 487 MB instead of carrying the 4 GB build environment.
+The public runtime retains the frozen official Node binary, engine installation,
+shared libraries and license documentation. It is about 487 MB.
 
 Replay and private outputs finish before the atomic results completion marker.
 The lifecycle server stays available until the platform stops it. The generated
@@ -241,9 +276,13 @@ shared-world replay chunks, and output finalization. Its BASIC policy interface
 and game rules are not used here.
 
 Polyworld supplies camera and graphical UI modules. Screeps owns simulation.
-`screeps_autoresearch` owns the official image and research benchmarks;
-`screeps_bot` owns strategies and shared bot utilities; `screeps_lib` owns
-game bindings. The league adapter does not change staging or research services.
+[Heartleaf](https://github.com/Metta-AI/coworld-heartleaf) is a reference for
+hosting the game and its example players together. The colony example, World
+bindings and small runtime helpers are snapshots from the author's Screeps
+workspace; their provenance is recorded in [THIRD_PARTY.md](THIRD_PARTY.md).
+
+Project code is licensed under [MIT](LICENSE); upstream code and assets retain
+their original notices.
 
 See [THIRD_PARTY.md](THIRD_PARTY.md) for pinned code/assets and license notices.
 Persistent worlds, custom balanced maps, additional players, richer models,

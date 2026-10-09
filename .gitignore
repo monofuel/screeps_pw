@@ -4,4 +4,8 @@ tmp/
 *.js
 *.wasm
 *.data
+*.replay
+*.log
+.env
+.env.*
 !vendor/**

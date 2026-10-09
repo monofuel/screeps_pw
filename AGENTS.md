@@ -6,7 +6,8 @@ Make Screeps a Polyworld/Coworld-shaped game that can be submitted to Softmax
 and run as a league. This repository owns the game integration and league
 package. It is separate from our playing bots and bot-research dashboard.
 
-- Read the workspace `../AGENTS.md` and this file before working here.
+- Read this file before working here. If a parent workspace has additional
+  instructions, read those too; a standalone clone needs no sibling projects.
 - Read [README.md](README.md) for the current match contract, commands,
   references, and measured implementation status.
 - The user has authorized implementing the first league MVP: 6,000 completed
@@ -23,22 +24,20 @@ package. It is separate from our playing bots and bot-research dashboard.
   finite match rules, replay capture/viewer, Coworld packaging, and integration
   tests. Use Screeps' existing JavaScript runtime; do not add Bassy or a new
   observation/action language.
-- `../screeps_bot` owns playing strategies and reusable `src/botlib/` behaviors.
-  Keep reference-policy strategy there where practical; do not create another
-  competing bot framework here. Small bundled policies and protocol fixtures
-  can live with the game package.
-- `../screeps_lib` owns Screeps API bindings. Add missing API bindings there,
-  rather than embedding them in the league adapter.
-- `../screeps_autoresearch` owns the official private World image, isolated World
-  benchmark tooling, and research dashboard. Its engine launcher and completed
-  turn checks are reuse candidates; its benchmark pass/fail rules are not league
-  rules. Read its `AGENTS.md` and `benchmark/CONTRACTS.md` before working there.
+- `players/colony` contains a public snapshot of the author's World bot,
+  reusable `botlib` behaviors, and World bindings. Reuse those behaviors rather
+  than copying new bespoke bots. Keep the league adapter separate from strategy.
+- `runtime/shared` contains the small shared Node bridge, JSON decoder and
+  completed-turn scheduler. The build must work without private sibling repos.
+- The upstream workspace repositories `screeps_bot`, `screeps_lib`, and
+  `screeps_autoresearch` own continued bot research, bindings, and benchmarks.
+  Read their instructions before working there; this repository's tests and
+  league rules do not change benchmark contracts or staging services.
 - Read the target repository's instructions before changing any sibling.
   Leave tutorial repositories and older experiments outside the task.
-- Reference workspace: `~/Documents/Projects/Softmax/`. Start with
-  `coworld-games/coworld-mindustry/` for the original-engine adapter pattern.
-  The active Polyworld engine checkout is
-  `~/src/softmax-polyworld/polyworld/`. Inspect actual interfaces before reuse.
+- Use the pinned public Nimby dependencies. Heartleaf is a reference for
+  shipping games with example players; Mindustry's Coworld demonstrates the
+  original-engine adapter pattern. Inspect actual interfaces before reuse.
 - Prefer an official Screeps engine integration. Do not reimplement Screeps
   simulation or port it into a 3D engine without an explicit design decision.
 - Reuse small modules when they fit. Do not copy an entire research runner,
