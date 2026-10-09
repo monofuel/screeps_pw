@@ -36,12 +36,16 @@ suite "Disposable official World":
     check result["ticks"].getInt == 101
     check result["scores"] == %*[0, 0]
     let initial = parseFile(directory / "initial.json")
+    check initial["terrain"].len == WorldRooms.len
+    for terrain in initial["terrain"]:
+      check terrain["room"].getStr in WorldRooms
     var spawns = 0
     for entity in initial["objects"]:
+      check entity["room"].getStr in WorldRooms
       if entity["type"].getStr == "spawn":
         inc spawns
         check entity["store"]["energy"].getInt == 300
-        check entity["room"].getStr in ["W1N1", "W9N9"]
+        check entity["room"].getStr in StartRooms
     check spawns == 2
     for user in initial["users"]:
       if user.getOrDefault("username").getStr in ["Seat0", "Seat1"]:
@@ -56,6 +60,11 @@ suite "Disposable official World":
     check start.objects.len == initial["objects"].len
     for entity in initial["objects"]:
       check start.objects.hasKey(entity["_id"].getStr)
+  test "Native routing uses the bounded 4x4 terrain":
+    run(["nim", "js", "tests/fixtures/navigation.nim"])
+    let directory = runMatch([Root / "build/fixtures/navigation.js", Root / "build/players/idle.js"], 300)
+    check "SMALL_WORLD_NAVIGATION_OK" in readFile(directory / "private/seat-0.log")
+    check "Error" notin readFile(directory / "private/seat-0.log")
   test "Policy errors stay private and never terminate native gameplay":
     run(["nim", "js", "tests/fixtures/throwing.nim"])
     let directory = runMatch([Root / "build/fixtures/throwing.js", Root / "build/players/idle.js"], 30)

@@ -43,7 +43,8 @@ proc runMatch*(policies: array[2, string], ticks = CompetitionTicks, seed = 2026
   let imageId = command(["docker", "image", "inspect", "--format", "{{.Id}}", image])
   writeFile(directory / "metadata.json", $(%*{"version": 1, "config": config,
     "image": imageId, "policySha256": hashes, "starts": [
-      {"room": StartRooms[0], "x": 37, "y": 31}, {"room": StartRooms[1], "x": 17, "y": 40}],
+      {"room": StartRooms[0], "x": StartPositions[0][0], "y": StartPositions[0][1]},
+      {"room": StartRooms[1], "x": StartPositions[1][0], "y": StartPositions[1][1]}],
     "cpu": 20, "initialBucket": 0,
     "adapterSha256": [hashFile(directory / "input/launcher.js"), hashFile(directory / "input/control.js")]}))
   let container = "screeps-pw-" & directory.lastPathPart.toLowerAscii()

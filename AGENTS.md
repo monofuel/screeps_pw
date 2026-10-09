@@ -12,6 +12,8 @@ package. It is separate from our playing bots and bot-research dashboard.
 - The user has authorized implementing the first league MVP: 6,000 completed
   ticks, native JavaScript policies, unpaced official simulation, recorded-state
   3D Polyworld viewing, packaging, certification, and initial hosted operation.
+- Keep the MVP simple: one fixed 4×4 world. Do not add configurable map generation
+  or broader game modes unless requested.
 - Preserve existing user work. Commit, push, deploy, upload a Coworld release,
   or create/enable a hosted league only when requested.
 

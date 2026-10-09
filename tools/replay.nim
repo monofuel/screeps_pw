@@ -8,7 +8,8 @@ proc main() =
   var replay = openReplay(readFile(paramStr(1)))
   let first = replay.stateAt(0)
   let last = replay.stateAt(replay.lastTick)
-  echo $(%*{"ticks": replay.lastTick, "initialObjects": first.objects.len,
+  echo $(%*{"ticks": replay.lastTick, "rooms": replay.header["terrain"].len,
+    "initialObjects": first.objects.len,
     "terminalObjects": last.objects.len, "scores": last.scores,
     "chunks": replay.header["chunks"].len})
 

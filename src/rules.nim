@@ -5,7 +5,11 @@ const
   CompetitionTicks* = 6000
   PolicyBytes* = 2 * 1024 * 1024
   LogBytes* = 10 * 1024 * 1024
-  StartRooms* = ["W1N1", "W9N9"]
+  WorldRooms* = ["W1N1", "W1N2", "W1N3", "W1N4",
+    "W2N1", "W2N2", "W2N3", "W2N4",
+    "W3N1", "W3N2", "W3N3", "W3N4",
+    "W4N1", "W4N2", "W4N3", "W4N4"]
+  StartRooms* = ["W1N1", "W2N2"]
   StartPositions* = [(37, 31), (17, 40)]
 
 proc require*(condition: bool, message: string) =

@@ -2,7 +2,7 @@ import
   std/[base64, json, os, strutils, times],
   pixie,
   ../tools/browser,
-  rules
+  replays, rules
 
 proc click(browser: var Browser, x, y: int) =
   ## Send a real canvas mouse click through Chromium's input pipeline.
@@ -55,6 +55,9 @@ proc main() =
   ## Verify visible drawing, clocks, transport, rooms, resize, and bad input.
   var browser = connectBrowser()
   let horizon = parseInt(getEnv("SCREEPS_PW_REPLAY_TICKS", "6000"))
+  let compact = openReplay(readFile(getEnv("SCREEPS_PW_REPLAY_FILE"))).header["terrain"].len == 16
+  let initialBox = if compact: (1110, 555, 138, 138) else: (1145, 590, 60, 60)
+  let targetBox = if compact: (964, 409, 138, 138) else: (720, 165, 60, 60)
   defer: browser.close()
   discard browser.call("Emulation.setDeviceMetricsOverride", %*{
     "width": 1280, "height": 800, "deviceScaleFactor": 1, "mobile": false})
@@ -92,11 +95,14 @@ proc main() =
   let initial = browser.picture()
   require(initial.pixels(670, 114, 584, 584, 87, 99, 117) > 20000, "World terrain walls are missing")
   require(initial.pixels(670, 114, 584, 584, 42, 79, 58) > 1000, "World terrain swamps are missing")
-  require(initial.pixels(1145, 590, 60, 60, 255, 237, 139) > 100, "Initial room outline is missing")
-  browser.click(748, 192)
+  require(initial.pixels(initialBox[0], initialBox[1], initialBox[2], initialBox[3], 255, 237, 139) > 100,
+    "Initial room outline is missing")
+  browser.click(targetBox[0] + targetBox[2] div 2, targetBox[1] + targetBox[3] div 2)
   let switched = browser.picture()
-  require(switched.pixels(720, 165, 60, 60, 255, 237, 139) > 100, "Map click did not select W9N9")
-  require(switched.pixels(1145, 590, 60, 60, 255, 237, 139) == 0, "Previous room stayed selected")
+  require(switched.pixels(targetBox[0], targetBox[1], targetBox[2], targetBox[3], 255, 237, 139) > 100,
+    "Map click did not select the other room")
+  require(switched.pixels(initialBox[0], initialBox[1], initialBox[2], initialBox[3], 255, 237, 139) == 0,
+    "Previous room stayed selected")
   require(initial.difference(switched, 20, 120, 590, 580) > 1000, "Map selection did not switch the 3D room")
   discard browser.call("Input.dispatchMouseEvent", %*{
     "type": "mouseWheel", "x": 960, "y": 410, "deltaX": 0, "deltaY": -400})
@@ -108,7 +114,7 @@ proc main() =
   let panned = browser.picture()
   require(zoomed.difference(panned, 670, 114, 584, 584) > 10000, "World map did not pan")
   browser.click(1230, 90)
-  browser.click(1176, 620)
+  browser.click(initialBox[0] + initialBox[2] div 2, initialBox[1] + initialBox[3] div 2)
   browser.drag(640, 400, 800, 400)
   let resized = browser.picture()
   require(resized.pixels(798, 350, 4, 100, 176, 185, 195) >= 140, "Pane divider did not resize")

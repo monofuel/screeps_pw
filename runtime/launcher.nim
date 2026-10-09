@@ -1,7 +1,7 @@
 import
   std/[asyncjs, jsffi, json],
   nodeBridge,
-  rules
+  rules, worldFixture
 
 const
   TemplatePath = "/opt/screeps/node_modules/@screeps/launcher/init_dist/db.json"
@@ -107,6 +107,7 @@ proc prepare(config: JsonNode): Future[void] {.async.} =
   let driver = require("@screeps/driver")
   discard await driver.updateAccessibleRoomsList().to(Future[JsObject])
   discard await driver.updateRoomStatusData().to(Future[JsObject])
+  discard await require("@screeps/backend/lib/cli/map").updateTerrainData().to(Future[JsObject])
   publishJson("/episode/initial.json", %*{
     "users": toJson(await find("users", toJs(%*{}))),
     "objects": toJson(await find("rooms.objects", toJs(%*{}))),
@@ -117,7 +118,7 @@ proc launch(): Future[void] {.async.} =
   try:
     let config = readJson("/episode/config.json")
     validateConfig(config)
-    let db = readJson(TemplatePath)
+    let db = smallWorld(readJson(TemplatePath))
     for collection in db["collections"]:
       if collection["name"].getStr == "env":
         collection["data"][0]["data"]["mainLoopPaused"] = %"1"
@@ -133,7 +134,7 @@ proc launch(): Future[void] {.async.} =
     discard await connectStorage()
     await prepare(config)
     let metadata = readJson("/episode/metadata.json")
-    metadata["fixtureSha256"] = %($sha256(readText(TemplatePath)))
+    metadata["fixtureSha256"] = %($sha256(cstring($db)))
     metadata["engineVersion"] = %($require("@screeps/engine/package.json").version.to(cstring))
     metadata["driverVersion"] = %($require("@screeps/driver/package.json").version.to(cstring))
     metadata["accounts"] = readJson("/episode/roster.json")

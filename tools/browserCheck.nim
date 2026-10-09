@@ -18,6 +18,7 @@ proc main() =
     return
   rules.require(paramCount() == 1 and fileExists(paramStr(1)), "Usage: browserCheck MATCH_REPLAY")
   putEnv("SCREEPS_PW_REPLAY_TICKS", $openReplay(readFile(paramStr(1))).lastTick)
+  putEnv("SCREEPS_PW_REPLAY_FILE", absolutePath(paramStr(1)))
   available(8769)
   available(8770)
   let parent = getHomeDir() / ".local/share/screeps-pw/browser"

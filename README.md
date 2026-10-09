@@ -4,18 +4,16 @@ Screeps World as a finite Coworld league, with native JavaScript policies and
 recorded-state 3D Polyworld replays.
 
 The local runner, 3D browser viewer, and Coworld package are implemented.
-**Screeps PW 0.1.1 is published, canonical and certified on Softmax.** Native
-integration, headless browser checks, and all ten local and hosted certification
-steps pass. The [Competition league](https://softmax.com/observatory/v2?detail=league:league_ac545b38-4caa-4873-a202-769697261f26)
+The game is published on Softmax. The [Competition league](https://softmax.com/observatory/v2?detail=league:league_ac545b38-4caa-4873-a202-769697261f26)
 is enabled with two colony players. Idle remains a test control.
 
 ## Game rules
 
 | Rule | Competition |
 | --- | --- |
-| World | Fresh official default 121-room private World |
+| World | Fixed 4×4 private World: 16 rooms, W1–W4 / N1–N4, sealed outer exits |
 | Players | Two independent accounts; starter bots and their colonies removed |
-| Starts | Seat 0: W1N1 (37,31); seat 1: W9N9 (17,40) |
+| Starts | Seat 0: W1N1 (37,31); seat 1: W2N2 (17,40), two room transitions apart |
 | Assets | One spawn containing 300 energy, RCL1, GCL1, empty Memory |
 | Account CPU | 20 CPU; empty initial bucket; native replenishment and execution/memory guards |
 | Duration | Exactly 6,000 completed ticks |
@@ -30,7 +28,11 @@ The map is asymmetric. League duels evaluate both starting assignments. Each
 episode retains its own scores; there is no survival bonus, elimination win, or
 research-benchmark qualification gate. GCL points are cumulative account points,
 not integer GCL levels, controller levels, or current-level progress.
-The seed is recorded as fixture metadata; v1 uses the fixed default terrain and
+The map retains the official default terrain within those 16 rooms, adds short
+three-tile-wide entrances connecting every adjacent pair, and seals the outer
+border. Both starting rooms have two
+sources. Native terrain and accessible-room caches are rebuilt before play.
+The seed is recorded as fixture metadata; the map is fixed and
 does not reseed native JavaScript randomness.
 
 ## Simulation and playback clocks
@@ -158,7 +160,7 @@ Set `SCREEPS_PW_VIEWER_URL` when running `make browser-test` to check a hosted
 viewer session instead of the local bundle. Both full competition replays and
 short certification replays are supported.
 Previous episodes retain their immutable viewer version; new episodes use the
-canonical 0.1.1 split viewer.
+current canonical game package.
 
 ## Coworld package
 
@@ -189,8 +191,7 @@ global WebSocket Ping/Pong, and a static replay bundle.
 
 The runtime image extracts the exact official Node binary, engine installation,
 shared libraries and license documentation from the frozen autoresearch image.
-It is about 487 MB instead of carrying the 4 GB build environment. Its full
-6,000-tick control produced the same 32,416 points as the original image.
+It is about 487 MB instead of carrying the 4 GB build environment.
 
 Replay and private outputs finish before the atomic results completion marker.
 The lifecycle server stays available until the platform stops it. The generated
@@ -203,6 +204,10 @@ Rounds wait for two eligible entrants. The published Coworld name is the literal
 `Screeps PW`, including spaces and capitalization.
 
 ## Verification evidence
+
+The original 121-room map's evidence below is historical; it does not describe
+the smaller 4×4 fixture. Current map checks and match evidence are recorded in
+[the verification record](coworld/VERIFICATION.md).
 
 Two full 6,000-tick baseline-versus-idle matches completed on the initial build:
 

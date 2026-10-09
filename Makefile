@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := build
 NIM ?= nim
-VERSION ?= 0.1.1
+VERSION ?= 0.1.2
 GAME_IMAGE ?=
 
 .PHONY: deps build test integration viewer browser-test package certify check
@@ -15,6 +15,7 @@ check:
 test:
 	$(NIM) r tests/test_rules.nim
 	$(NIM) r tests/test_replays.nim
+	$(NIM) r tests/test_worldFixture.nim
 integration: build
 	$(NIM) r tests/test_integration.nim
 viewer:

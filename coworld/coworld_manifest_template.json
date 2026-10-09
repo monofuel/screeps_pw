@@ -50,7 +50,7 @@
       "description": "Takes no actions; a controlled comparison opponent."}
   ],
   "variants": [{"id": "competition", "name": "6000-tick GCL race",
-    "description": "One shared default World, two fresh accounts, highest earned account GCL points wins.",
+    "description": "One shared fixed 4x4 World, two fresh accounts two room transitions apart, highest earned account GCL points wins.",
     "game_config": {"players": [{"name": "Blue"}, {"name": "Red"}], "seed": 2026, "max_ticks": 6000}}],
   "certification": {
     "game_config": {"players": [{"name": "Colony baseline"}, {"name": "Idle control"}],

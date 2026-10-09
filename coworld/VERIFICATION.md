@@ -151,3 +151,58 @@ and scored `[32416,16792]` in seat order. The players swap seats between
 `ereq_501de8ce-a51a-4af4-b40f-a33016462507` and
 `ereq_2cabe586-ec48-4c95-afe8-a57f6f4914c6`, so each won once and earned a mean
 of 24,604 GCL points. The first replay is 2,343,211 bytes.
+
+## Fixed 4×4 MVP map
+
+The current fixture contains exactly 16 rooms, W1–W4 / N1–N4. It retains the
+default room terrain, connects each adjacent pair with three-tile-wide entrances
+and seals the outer edges. Starts are W1N1 (37,31) and W2N2 (17,40), two room
+transitions apart; each starting room has two sources. Scoring, account budgets
+and the 6,000-tick horizon are unchanged.
+
+The cropped database rebuilds Loki indexes and native terrain/accessibility
+caches. Its fixture SHA-256 is
+`08fd55d69370e2fd4891e0e8a54145cacce4d03f29c43122137f3f3a105b6047`.
+The runtime image is
+`sha256:4001c06899e7aafeca9a6ec55808e37cb9d95858ae584034b19cab6f124c0f72`.
+
+`make test`, native module checks, all eight disposable-engine integration
+checks and the headless browser checks pass. The navigation check verifies
+native routes to every room, blocked routes outside the map, sealed edge
+terrain, and an actual creep crossing between the starting rooms within
+300 ticks. Its artifacts are at
+`~/.local/share/screeps-pw/matches/20261009T013829Z-h7Y95uXQ/`.
+The browser checks verify terrain detail, linked selection, pan/zoom, divider
+resizing and playback with this smaller map. All ten local certification steps
+pass, with artifacts at
+`~/.local/share/screeps-pw/certification/tmp/coworld-cert-netcyl7f/`.
+
+The two compiled colony examples completed a full 6,000-tick local match with
+seat-order earned GCL `[32416,10031]` in 157.559 seconds and no policy/runtime
+errors. This proves operation, not PvP strength. Artifacts are at
+`~/.local/share/screeps-pw/4x4-duels/20261009T013857Z-CaRg6ByO/`.
+
+Softmax certified all ten hosted steps at 2026-10-09 01:42:58 UTC and passed
+five upload smoke episodes. The published 0.1.2 package is
+`cow_dede9385-2a54-495b-95ab-208c59a032e2`, manifest hash
+`sha256:6e688710bdc5c788f5e5cd4a105f130cc410ec29387b2d6d66215f43e6c7b0e7`.
+The existing league's game and canonical Coworld pointers both resolve to this
+package. Its two existing players remain in Competition.
+Hosted smoke replay `ereq_0a466984-b257-475f-baf9-cc0185d2cc98` decodes to
+exactly 16 rooms and 600 completed ticks, scoring `[290,0]`. The downloaded
+replay is `~/.local/share/screeps-pw/4x4-hosted.replay`; the upload transcript is
+`~/.local/share/screeps-pw/4x4-upload.log`.
+A fresh round was requested through the existing league's `trigger-round`
+endpoint after confirming the new canonical package; the acknowledgement is
+`~/.local/share/screeps-pw/4x4-trigger-round.json`.
+
+```sh
+make test
+make integration
+make package VERSION=0.1.2
+make certify
+make browser-test REPLAY=/home/monofuel/.local/share/screeps-pw/matches/20261009T013829Z-h7Y95uXQ/match.replay
+build/match build/players/baseline.js build/players/baseline.js --output:/home/monofuel/.local/share/screeps-pw/4x4-duels
+nim r tools/sdk.nim --elevated upload-coworld dist/coworld_manifest.json --visibility public --wait-certification
+nim r tools/replay.nim /home/monofuel/.local/share/screeps-pw/4x4-hosted.replay
+```
