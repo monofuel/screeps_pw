@@ -3,9 +3,7 @@ import
   nodeBridge,
   policies, rules, worldFixture
 
-const
-  TemplatePath = "/opt/screeps/node_modules/@screeps/launcher/init_dist/db.json"
-  EnginePath = "/opt/screeps/node_modules/@screeps/engine/dist/"
+const TemplatePath = "/opt/screeps/node_modules/@screeps/launcher/init_dist/db.json"
 
 var
   children: seq[JsObject]
@@ -64,61 +62,8 @@ proc startChild(name, path: string): JsObject =
       shutdown(0)
   )
 
-proc waitForStorage(child: JsObject): Future[void] =
-  ## Await official storage readiness.
-  newPromise(proc(resolve: proc()) =
-    ## Resolve only the readiness event.
-    child.on("message", proc(message: JsObject) =
-      ## Handle the launcher's storage IPC message.
-      if message.to(cstring) == "storageLaunched": resolve()
-    )
-  )
-
-proc prepare(config: JsonNode): Future[void] {.async.} =
-  ## Replace all starter colonies before the first turn.
-  for user in toJson(await find("users", toJs(%*{}))):
-    if not user.hasKey("bot"): continue
-    let id = user["_id"]
-    discard await removeWhere("rooms.objects", toJs(%*{"user": id, "type": {"$ne": "controller"}}))
-    discard await update("rooms.objects", toJs(%*{"user": id, "type": "controller"}),
-      toJs(%*{"$set": {"user": nil, "level": 0, "progress": 0,
-        "safeMode": nil, "downgradeTime": nil, "reservation": nil}}))
-    discard await removeWhere("users", toJs(%*{"_id": id}))
-  discard await clear("users.code")
-  discard await envSet("gameTime", toJs(%1))
-  discard await envSet("tickRate", toJs(%1))
-  discard await envSet("activeRooms", toJs(%*[]))
-  var roster = newJArray()
-  let bots = require("@screeps/backend/lib/cli/bots")
-  for slot in 0..1:
-    let username = "Seat" & $slot
-    discard await bots.spawn(cstring("seat" & $slot), cstring(StartRooms[slot]),
-      toJs(%*{"username": username, "cpu": 20, "gcl": 1,
-        "x": StartPositions[slot][0], "y": StartPositions[slot][1]})).to(Future[JsObject])
-    let account = toJson(await find("users", toJs(%*{"username": username})))[0]
-    let stored = require("@screeps/backend/lib/utils").translateModulesToDb(toJs(modules[slot]))
-    discard await update("users.code", toJs(%*{"user": account["_id"], "activeWorld": true}),
-      toJs(%*{"$set": {"modules": toJson(stored)}}))
-    discard await update("users", toJs(%*{"_id": account["_id"]}),
-      toJs(%*{"$set": {"cpuAvailable": 0}, "$unset": {"bot": true}}))
-    discard await update("rooms.objects", toJs(%*{"user": account["_id"], "type": "spawn"}),
-      toJs(%*{"$set": {"store": {"energy": 300}}}))
-    discard await update("rooms.objects", toJs(%*{"user": account["_id"], "type": "controller"}),
-      toJs(%*{"$set": {"level": 1, "progress": 0}}))
-    roster.add %*{"slot": slot, "user": account["_id"],
-      "log": "/episode/private/seat-" & $slot & ".log"}
-  publishJson("/episode/roster.json", roster)
-  let driver = require("@screeps/driver")
-  discard await driver.updateAccessibleRoomsList().to(Future[JsObject])
-  discard await driver.updateRoomStatusData().to(Future[JsObject])
-  discard await require("@screeps/backend/lib/cli/map").updateTerrainData().to(Future[JsObject])
-  publishJson("/episode/initial.json", %*{
-    "users": toJson(await find("users", toJs(%*{}))),
-    "objects": toJson(await find("rooms.objects", toJs(%*{}))),
-    "terrain": toJson(await find("rooms.terrain", toJs(%*{})))})
-
 proc launch(): Future[void] {.async.} =
-  ## Prepare storage and launch the official runner, processor, and coordinator.
+  ## Stage the world and policies, then start the single official engine process.
   try:
     let config = readJson("/episode/config.json")
     validateConfig(config)
@@ -139,7 +84,6 @@ proc launch(): Future[void] {.async.} =
       if collection["name"].getStr == "env":
         collection["data"][0]["data"]["mainLoopPaused"] = %"1"
     writeText("/world/db.json", cstring($db))
-    setEnv("STORAGE_PORT", "/world/storage.sock")
     setEnv("DB_PATH", "/world/db.json")
     setEnv("MODFILE", "/episode/mods.json")
     setEnv("DRIVER_MODULE", "@screeps/driver")
@@ -148,21 +92,8 @@ proc launch(): Future[void] {.async.} =
     # because the official accessibleRooms cache returns undefined to a run that starts
     # during its first fetch. Keep both in place if this changes.
     setEnv("RUNNER_THREADS", "2")
-    common.configManager.load()
-    let storage = startChild("storage", "/opt/screeps/node_modules/@screeps/storage/bin/start.js")
-    await waitForStorage(storage)
-    discard await connectStorage()
-    await prepare(config)
-    let metadata = readJson("/episode/metadata.json")
-    metadata["fixtureSha256"] = %($sha256(cstring($db)))
-    metadata["engineVersion"] = %($require("@screeps/engine/package.json").version.to(cstring))
-    metadata["driverVersion"] = %($require("@screeps/driver/package.json").version.to(cstring))
-    metadata["accounts"] = readJson("/episode/roster.json")
-    publishJson("/episode/metadata.json", metadata)
-    discard startChild("runner", EnginePath & "runner.js")
-    discard startChild("processor", EnginePath & "processor.js")
-    discard await envSet("mainLoopPaused", toJs(%"0"))
-    discard startChild("main", EnginePath & "main.js")
+    publishJson("/world/modules.json", %modules)
+    discard startChild("engine", $require("path").join(jsDirname, "engine.js").to(cstring))
   except:
     shutdown(2, getCurrentExceptionMsg())
 

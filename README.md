@@ -74,6 +74,14 @@ The engine advances immediately after a committed turn, without inter-tick
 sleep or an internal whole-match wall-clock cutoff. Actual throughput depends
 on scripts, engine work, and I/O. Script CPU and memory guards remain enabled.
 
+The launcher starts one engine process that loads the official storage, runner,
+processor and coordinator modules together. Storage calls keep the official
+client's JSON-copy semantics without a socket. Both seats run concurrently in
+the official per-account isolated-vm sandboxes, and the engine loops restart
+without Node's 1 ms timer floor. On the local reference machine a 1,500-tick
+match takes about 5 s with idle seats and about 17 s for baseline self-play,
+in about 330 MiB.
+
 Completed replays default to **10x playback: 10 ticks per second**. A full
 competition replay takes two and a half minutes. Normal 1x playback is one tick per second.
 Playback speed does not affect simulation or scores.
@@ -176,8 +184,8 @@ make browser-test REPLAY=/absolute/path/to/match.replay
 
 The runner accepts `--seed:NUMBER`, `--output:DIRECTORY` and `--image:IMAGE`.
 Every match, including tests and certification, runs exactly 1,500 ticks. Artifacts default to `~/.local/share/screeps-pw/matches/`.
-Set `PW_TIMING=1` to write per-process stage and storage-call timing to
-`internal/timing-*.json` in the match directory; it adds measurable overhead.
+Set `PW_TIMING=1` to write engine stage and storage-call timing to
+`internal/timing.json` in the match directory; it adds measurable overhead.
 
 `make engine` pulls the immutable public runtime from the published 0.1.2
 Coworld package. Its upstream Screeps revision is
@@ -288,7 +296,7 @@ Packaging uses public `coworld[auth]==0.1.56` through an isolated uv environment
 `d9d2a9a91131e7ef2f7c9ef6ac35c53775a5a386`; its adjacent `softmax-cli` package
 must also be present. This override is optional.
 
-The game image owns both policy VMs and all engine processes. No nested Docker
+The game image owns both policy VMs and the engine process. No nested Docker
 or separate player pods are required. The package declares the
 `coworld-player-seats/2` file-player contract, a 1,500-tick competition variant,
 a 1,500-tick certification fixture, private seat logs/status, a health endpoint,

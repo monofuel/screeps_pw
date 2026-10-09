@@ -33,7 +33,7 @@ proc runMatch*(policies: array[2, string], seed = 2026,
     writeFile(directory / "input/seat" & $slot / "main.js", "")
     hashes.add %hashFile(policies[slot])
     writeFile(directory / "private/seat-" & $slot & ".log", "")
-  for name in ["launcher", "control"]:
+  for name in ["launcher", "engine", "control"]:
     copyFile(Root / "build/runtime" / (name & ".js"), directory / "input" / (name & ".js"))
   writeFile(directory / "config.json", $config)
   writeFile(directory / "seats.json", "{}")
@@ -45,7 +45,8 @@ proc runMatch*(policies: array[2, string], seed = 2026,
       {"room": StartRooms[0], "x": StartPositions[0][0], "y": StartPositions[0][1]},
       {"room": StartRooms[1], "x": StartPositions[1][0], "y": StartPositions[1][1]}],
     "cpu": 20, "initialBucket": 0,
-    "adapterSha256": [hashFile(directory / "input/launcher.js"), hashFile(directory / "input/control.js")]}))
+    "adapterSha256": [hashFile(directory / "input/launcher.js"), hashFile(directory / "input/engine.js"),
+      hashFile(directory / "input/control.js")]}))
   let container = "screeps-pw-" & directory.lastPathPart.toLowerAscii()
   var created = false
   setControlCHook(interrupt)

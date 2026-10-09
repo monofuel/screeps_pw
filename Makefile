@@ -16,6 +16,7 @@ check:
 	$(NIM) check tools/match.nim
 	$(NIM) js runtime/control.nim
 	$(NIM) js runtime/launcher.nim
+	$(NIM) js runtime/engine.nim
 	$(NIM) check src/policyUpload.nim
 test:
 	$(NIM) r tests/test_rules.nim

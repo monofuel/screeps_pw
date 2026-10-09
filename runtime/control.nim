@@ -5,7 +5,6 @@ import
   ./[recording, timing]
 
 var
-  scheduling: TurnScheduler
   initialized = false
   opening: array[2, float]
   configFile: JsonNode
@@ -70,11 +69,10 @@ proc rejected(error: JsObject): JsObject {.importjs: "Promise.reject(#)".} =
 proc callWith(function, argument: JsObject): JsObject {.importjs: "#(#)".} =
   ## Call the official runtime builder.
 
-proc tagRuns(entrypoint: cstring) =
+proc tagRuns() =
   ## Attribute each concurrent seat's run result to its account.
   ## The official accessibleRooms cache returns undefined to runs that start while its
   ## first fetch is pending, so later runs wait until the first run has settled.
-  if entrypoint != resolveModule("@screeps/engine/dist/runner.js"): return
   let driver = require("@screeps/driver")
   let original = driver.makeRuntime
   var first: JsObject
@@ -97,12 +95,10 @@ proc tagRuns(entrypoint: cstring) =
 proc install(config: JsObject) =
   ## Install trusted tournament hooks through the official mod interface.
   if not config.hasOwnProperty("engine"): return
-  let entrypoint = process.argv[1].to(cstring)
   installTiming(config)
   config.engine.mainLoopMinDuration = 1
-  scheduling = installTurnScheduler(config, nodeTimers, entrypoint)
-  installRoomScheduler(nodeTimers, entrypoint)
-  tagRuns(entrypoint)
+  installLoopScheduler(config, nodeTimers)
+  tagRuns()
   config.engine.mainLoopCustomStage = completed
   var logs = initTable[cstring, cstring]()
   config.engine.on("runnerLoopStage", proc(stage: cstring, value: JsObject) =

@@ -4,7 +4,7 @@ import
 
 proc main() =
   ## Build tournament hooks and the existing World reference entrant.
-  for source in ["launcher", "control"]:
+  for source in ["launcher", "engine", "control"]:
     run(["nim", "js", "runtime/" & source & ".nim"])
   run(["nim", "js", "players/idle.nim"])
   run(["nim", "js", "players/colony/main.nim"])

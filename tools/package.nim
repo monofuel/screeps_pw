@@ -27,7 +27,8 @@ proc main() =
       "engineRevision": "7ff972231c0a0a7aa91978297432ddb806976281",
       "sdkVersion": "0.1.56",
       "baselineSha256": hashFile(Root / "build/players/baseline.js"),
-      "adapterSha256": [hashFile(Root / "build/runtime/launcher.js"), hashFile(Root / "build/runtime/control.js")],
+      "adapterSha256": [hashFile(Root / "build/runtime/launcher.js"), hashFile(Root / "build/runtime/engine.js"),
+        hashFile(Root / "build/runtime/control.js")],
       "dependenciesSha256": hashFile(Root / "nimby.lock")}
     writeFile(Root / "build/release.json", $release)
     run(["docker", "build", "--file", "coworld/Dockerfile", "--build-arg",

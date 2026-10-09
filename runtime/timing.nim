@@ -16,9 +16,6 @@ var
 proc now(): float {.importjs: "performance.now()".} =
   ## Read a monotonic clock for diagnostic durations.
 
-proc basename(value: cstring): cstring {.importjs: "require('path').basename(#, '.js')".} =
-  ## Name the official process role from its entrypoint.
-
 proc add(table: var Table[string, Totals], key: string, ms: float) =
   let entry = addr table.mgetOrPut(key, Totals())
   inc entry.count
@@ -44,36 +41,32 @@ proc track(config: JsObject, event: string) =
       if finishes mod 100 == 0: flush()
   )
 
-proc requestKey(arguments: JsObject): string =
+proc requestKey(name: cstring, arguments: JsObject): string =
   ## Group storage calls by method and, for collection calls, by collection.
-  result = $arguments[0].to(cstring)
+  result = $name
   if result in ["dbRequest", "dbUpdate", "dbBulk", "dbFindEx"]:
-    result &= ":" & $arguments[1].to(cstring)
+    result &= ":" & $arguments[0].to(cstring)
   if result.len > 9 and result[0..8] == "dbRequest":
-    result &= ":" & $arguments[2].to(cstring)
+    result &= ":" & $arguments[1].to(cstring)
 
 proc wrapRequests() =
-  ## Measure storage round trips at the official RPC client.
-  let prototype = common.rpc.RpcClient.prototype
-  let original = prototype.request
-  proc invoke(target, receiver, arguments: JsObject): JsObject {.importjs: "#.apply(#, #)".}
+  ## Measure storage calls at the in-process storage dispatcher.
+  let storage = common.storage
+  let original = storage.localRequest
+  proc callWith(function: JsObject, name: cstring, arguments: JsObject): JsObject {.importjs: "#(#, #)".}
   proc settle(promise: JsObject, done: proc()): JsObject {.importjs: "#.finally(#)".}
-  proc receiverMethod(handler: proc(receiver, arguments: JsObject): JsObject): JsObject {.
-    importjs: "(function(h) { return function() { return h(this, Array.from(arguments)); }; })(#)".}
-    ## Expose the caller's receiver, which Nim closures do not preserve.
-  prototype.request = receiverMethod(proc(receiver, arguments: JsObject): JsObject =
-    let key = requestKey(arguments)
+  storage.localRequest = proc(name: cstring, arguments: JsObject): JsObject =
+    let key = requestKey(name, arguments)
     let started = now()
-    settle(invoke(original, receiver, arguments), proc() =
+    settle(callWith(original, name, arguments), proc() =
       requests.add(key, now() - started)
     )
-  )
 
 proc installTiming*(config: JsObject) =
   ## Record per-process stage and storage timing when PW_TIMING is set.
   let enabled = envValue("PW_TIMING")
   if enabled.isNil or enabled != "1": return
-  path = cstring("/episode/internal/timing-" & $basename(process.argv[1].to(cstring)) & ".json")
+  path = "/episode/internal/timing.json"
   wrapRequests()
   for event in ["mainLoopStage", "runnerLoopStage", "processorLoopStage"]:
     track(config, event)
