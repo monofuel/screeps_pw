@@ -1,6 +1,7 @@
 .DEFAULT_GOAL := build
 NIM ?= nim
-VERSION ?= 0.1.0
+VERSION ?= 0.1.1
+GAME_IMAGE ?=
 
 .PHONY: deps build test integration viewer browser-test package certify check
 deps:
@@ -21,6 +22,6 @@ viewer:
 browser-test:
 	$(NIM) r tools/browserCheck.nim "$(REPLAY)"
 package: build
-	$(NIM) r tools/package.nim $(VERSION)
+	$(NIM) r tools/package.nim $(VERSION) "$(GAME_IMAGE)"
 certify:
 	$(NIM) r tools/sdk.nim certify dist/coworld_manifest.json --timeout-seconds 300 --no-open-report

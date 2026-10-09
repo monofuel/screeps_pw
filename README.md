@@ -4,10 +4,10 @@ Screeps World as a finite Coworld league, with native JavaScript policies and
 recorded-state 3D Polyworld replays.
 
 The local runner, 3D browser viewer, and Coworld package are implemented.
-**Screeps PW 0.1.0 is published, canonical, and certified on Softmax.** Native
+**Screeps PW 0.1.1 is published, canonical and certified on Softmax.** Native
 integration, headless browser checks, and all ten local and hosted certification
 steps pass. The [Competition league](https://softmax.com/observatory/v2?detail=league:league_ac545b38-4caa-4873-a202-769697261f26)
-is enabled with the colony baseline and idle control.
+is enabled with two colony players. Idle remains a test control.
 
 ## Game rules
 
@@ -117,9 +117,17 @@ ports. Cancellation cleans up the episode container.
 
 The Nim/WASM viewer uses Polyworld's RTS camera and shared HUD theme. Terrain
 walls rise above a room board; buildings and creeps use procedural geometry and
-ownership/body-part colors. The world minimap selects rooms. Click objects for
-inspection, pan with arrow keys or the middle mouse button, and zoom with the
-wheel. The bottom bar controls play, pause, stepping, seeking, looping and speed.
+ownership/body-part colors. Click objects for
+inspection. The viewer starts with a 50/50 split: the selected 3D room on the
+left and a detailed world map on the right. Drag the divider to resize the panes.
+The map shows every room's walls, swamps and open ground, with ownership borders
+and recorded creep, resource and building markers. Click a room to select it in
+3D; its gold outline follows the selection. Drag or middle-drag the map to pan,
+use its wheel or +/- buttons to zoom, and press Fit to restore the full world.
+
+In the 3D pane, pan with arrow keys or the middle mouse button and zoom with
+the wheel. Arrow keys over the map pan that view instead. The full-width bottom
+bar controls play, pause, stepping, seeking, looping and speed.
 
 The replay records the shared authoritative world once, including tick 0 and
 every completed tick. Static terrain is stored once. Independently compressed
@@ -133,21 +141,24 @@ and reports readiness after displaying a valid frame. Browser viewing requires
 serving the bundle over HTTP. There is no live 3D viewer in v1.
 
 `make browser-test` starts disposable headless Chromium and a loopback HTTP
-server on ports 8770 and 8769, checks a full 6,000-tick replay, then stops both.
+server on ports 8770 and 8769, checks the supplied replay, then stops both.
 It verifies visible geometry, normal/default playback clocks, pause, stepping,
-timeline seeking, room switching, resizing, and visible missing-replay errors.
+timeline seeking, terrain detail, linked room selection, map pan/zoom and input
+isolation, divider resizing, window resizing, and visible missing-replay errors.
 Screenshots and browser profiles stay under `~/.local/share/screeps-pw/`.
 
 The league's episode page opens the hosted 3D viewer. The CLI can print its
 viewer link without launching a desktop browser:
 
 ```sh
-nim r tools/sdk.nim replay-open ereq_1cda007f-f4ed-455f-a132-efe2add8216f --hosted --no-open-browser
+nim r tools/sdk.nim replay-open EPISODE_REQUEST_ID --hosted --no-open-browser
 ```
 
 Set `SCREEPS_PW_VIEWER_URL` when running `make browser-test` to check a hosted
-viewer session instead of the local bundle. This was verified against the
-published 0.1.0 viewer and its hosted replay.
+viewer session instead of the local bundle. Both full competition replays and
+short certification replays are supported.
+Previous episodes retain their immutable viewer version; new episodes use the
+canonical 0.1.1 split viewer.
 
 ## Coworld package
 
@@ -157,7 +168,11 @@ make certify
 ```
 
 Set `VERSION` for later immutable releases, for example
-`make package VERSION=0.1.1`.
+`make package VERSION=0.1.2`.
+
+For a viewer-only release, reuse the frozen game image with
+`make package VERSION=0.1.1 GAME_IMAGE=screeps-pw:0.1.0`. This changes the viewer
+and manifest version while retaining the exact simulation runtime.
 
 Packaging uses the pinned Coworld SDK through an isolated uv tool environment.
 Set `COWORLD_SOURCE` to the checked-out SDK package when its default workspace

@@ -101,3 +101,53 @@ objects and 357 terminal objects. Its terminal scores are exactly `[32416,0]`.
 The full browser transport/drawing checks pass on this hosted replay.
 They also pass against the actual hosted viewer session, including bundle
 loading, replay retrieval, rendering and controls under the platform's headers.
+
+## Split viewer and active opponent
+
+Verified locally on 2026-10-09 UTC. The viewer starts with equal panes: a 3D
+room and a detailed, cached 11x11 world terrain map. Ownership, resources,
+creeps and buildings are overlaid on the terrain; room selection links the map
+and 3D pane. Pan, pointer-centered zoom, Fit and a draggable divider preserve
+the shared replay clock.
+
+Native checks, `make test`, the WASM build and full-replay browser checks pass.
+Browser checks inspect actual wall/swamp pixels, selection-outline movement,
+3D room switching, map wheel isolation, map dragging, divider resizing and
+window resizing, as well as the existing playback/error checks.
+
+```sh
+make viewer
+make browser-test REPLAY=/home/monofuel/.local/share/screeps-pw/hosted-seat0.replay
+make package VERSION=0.1.1 GAME_IMAGE=screeps-pw:0.1.0
+make certify
+```
+
+The 0.1.1 package reuses runtime image `608a09d38ee8`; its native engine,
+launcher, turn adapter and policy bytes retain the original frozen hashes.
+All ten local certification checks pass; artifacts are at
+`~/.local/share/screeps-pw/certification/tmp/coworld-cert-nmyuois2/`.
+
+The second league player now runs `screeps-pw-colony-b:v1`, policy version
+`09cfb2a8-7619-486b-8503-ef5caeadbdde`, using the same compiled colony baseline.
+Submission `sub_36c2066b-0c6a-41e3-bab7-d18dd906b9ff` is active in Competition
+with membership `lpm_dcd3bd54-c85b-4434-a0c4-78f2cb2911a0`. Its idle membership
+is benched. Idle remains a bundled certification/test control.
+
+The public, canonical 0.1.1 release is
+`cow_ddc2b7be-b01f-4172-9cf4-741da540dbf2`, with manifest hash
+`sha256:128e4d87cf5589d4c289e5aa341f8e9a454f478e348dc460bde0eff9bb0d89e1`.
+All ten hosted certification checks and five smoke episodes passed. Runtime
+image and rules are unchanged; previous episodes retain their immutable viewer
+version, while new episodes use the canonical release.
+The published split viewer also passes the full browser interaction checks
+against hosted certification episode
+`ereq_72001ac9-9d8a-4eb4-92e6-99a937843922` and its 600-tick replay. Evidence is
+at `~/.local/share/screeps-pw/split-hosted-browser.log`.
+
+The first colony-versus-colony round,
+`round_b32fdb48-002d-4464-a509-402675d40103`, completed at
+2026-10-09 00:15:36 UTC with no round error. Both episodes reached 6,000 ticks
+and scored `[32416,16792]` in seat order. The players swap seats between
+`ereq_501de8ce-a51a-4af4-b40f-a33016462507` and
+`ereq_2cabe586-ec48-4c95-afe8-a57f6f4914c6`, so each won once and earned a mean
+of 24,604 GCL points. The first replay is 2,343,211 bytes.

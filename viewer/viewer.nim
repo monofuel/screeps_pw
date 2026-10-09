@@ -1,9 +1,12 @@
 import
   std/[json, math, os, strformat, strutils, tables],
-  chroma, opengl, silky, vmath, windy,
+  bumpy, chroma, opengl, silky, vmath, windy,
   polyworld/[chrome, gameuis, inputs, rtscameras, viewers],
   replays, rules,
-  ./sceneShapes
+  ./[sceneShapes, worldmap]
+
+when defined(emscripten):
+  {.emit: "#include <emscripten.h>".}
 
 const
   Blue = rgbx(86, 163, 255, 255)
@@ -20,6 +23,13 @@ var
   room = "W1N1"
   selected = ""
   terrain: Table[string, string]
+  world: WorldMap
+  split = 0.5'f32
+  splitDragging = false
+  mapDragging = false
+  mapMoved = false
+  mapPress: Vec2
+  wheelScale = 1.0'f32
   position = 0.0
   playing = true
   repeating = true
@@ -54,6 +64,60 @@ proc point(entity: JsonNode): Vec3 =
   ## Convert native tile coordinates to room-centered XZ coordinates.
   vec3(entity["x"].getFloat.float32 - 24.5, 0.04,
     entity["y"].getFloat.float32 - 24.5)
+
+proc transportHeight(): float32 =
+  if window.size.x < 1120: 114 else: 84
+
+proc divider(): float32 =
+  floor(window.size.x.float32 * split)
+
+proc roomViewport(): GameUiPanel =
+  GameUiPanel(origin: vec2(0, 104),
+    size: vec2(max(divider() - 4, 1), max(window.size.y.float32 - transportHeight() - 104, 1)))
+
+proc mapViewport(): GameUiPanel =
+  GameUiPanel(origin: vec2(divider() + 16, 112),
+    size: vec2(max(window.size.x.float32 - divider() - 28, 1),
+      max(window.size.y.float32 - transportHeight() - 128, 1)))
+
+proc updateInput(dt: float32) =
+  let pointer = window.mousePos.vec2
+  let body = GameUiPanel(origin: vec2(divider() - 7, 68),
+    size: vec2(14, window.size.y.float32 - transportHeight() - 68))
+  if window.mousePressed(MouseLeft) and body.contains(pointer): splitDragging = true
+  if splitDragging:
+    if window.mouseDown(MouseLeft): split = clamp(pointer.x / window.size.x.float32, 0.25, 0.75)
+    else: splitDragging = false
+    return
+  let panel = mapViewport()
+  if panel.contains(pointer):
+    if window.scrollDelta.y != 0: world.zoomAt(pointer, panel, window.scrollDelta.y * wheelScale)
+    if window.mouseDown(MouseMiddle): world.panBy(window.mouseDelta.vec2, panel)
+    let pan = rtsPanDir(window)
+    world.panBy(-pan * dt * 300, panel)
+    if window.mousePressed(MouseLeft):
+      mapDragging = true
+      mapMoved = false
+      mapPress = pointer
+  if mapDragging:
+    if length(pointer - mapPress) > 5: mapMoved = true
+    if window.mouseDown(MouseLeft) and mapMoved:
+      world.panBy(window.mouseDelta.vec2, panel)
+    if window.mouseReleased(MouseLeft):
+      if not mapMoved:
+        let name = world.roomAt(pointer, panel)
+        if name.len > 0:
+          room = name
+          selected = ""
+          cameraTarget = vec3(0)
+      mapDragging = false
+  let viewport = roomViewport()
+  if viewport.contains(pointer):
+    cameraDistance = clamp(cameraDistance - window.scrollDelta.y * wheelScale * 3, 12, 120)
+    discard applyRtsPan(cameraTarget, rtsPanDir(window), dt, cameraDistance, 25)
+    if window.mouseDown(MouseMiddle):
+      cameraTarget.x -= window.mouseDelta.x.float32 * cameraDistance / 800
+      cameraTarget.z -= window.mouseDelta.y.float32 * cameraDistance / 800
 
 proc drawRoom() =
   ## Render recorded terrain and entities using cosmetic heights.
@@ -114,8 +178,9 @@ proc drawRoom() =
       renderer.addSquare(at + vec3(0, 1.1, 0), 0.6, rgbx(255, 237, 139, 120))
   glClearColor(0.025, 0.03, 0.04, 1)
   glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
-  glViewport(0, 0, window.size.x, window.size.y)
-  viewProjection = perspective(RtsFieldOfView, window.size.x.float32 / max(window.size.y, 1).float32,
+  let viewport = roomViewport()
+  glViewport(0, transportHeight().int32, viewport.size.x.int32, viewport.size.y.int32)
+  viewProjection = perspective(RtsFieldOfView, viewport.size.x / viewport.size.y,
     0.1, 200) * lookAt(rtsCameraEye(cameraTarget, cameraDistance), cameraTarget, vec3(0, 1, 0))
   renderer.draw(viewProjection, opaque = true)
 
@@ -130,9 +195,57 @@ proc button(text: string, at: Vec2, width = 64.0'f32): bool =
   label(text, at + vec2(7, 5), width = width - 12)
   window.clicked(sk, panel)
 
-proc transportHeight(): float32 =
-  ## Keep every transport control accessible in narrower browser frames.
-  if window.size.x < 1120: 114 else: 84
+proc outline(panel: GameUiPanel, color: ColorRGBX, width: float32) =
+  sk.drawRect(panel.origin, vec2(panel.size.x, width), color)
+  sk.drawRect(panel.origin + vec2(0, panel.size.y - width), vec2(panel.size.x, width), color)
+  sk.drawRect(panel.origin, vec2(width, panel.size.y), color)
+  sk.drawRect(panel.origin + vec2(panel.size.x - width, 0), vec2(width, panel.size.y), color)
+
+proc drawWorld() =
+  let panel = mapViewport()
+  let hover = world.roomAt(window.mousePos.vec2, panel)
+  label("World" & (if hover.len > 0: "  /  " & hover else: ""),
+    vec2(divider() + 16, 80), width = max(panel.size.x - 180, 1))
+  if button("-", vec2(window.size.x.float32 - 174, 76), 44):
+    world.zoomAt(panel.origin + panel.size / 2, panel, -1)
+  if button("+", vec2(window.size.x.float32 - 124, 76), 44):
+    world.zoomAt(panel.origin + panel.size / 2, panel, 1)
+  if button("Fit", vec2(window.size.x.float32 - 74, 76), 60): world.fit()
+  sk.pushClipRect(rect(panel.origin, panel.size))
+  let image = world.imagePanel(panel)
+  sk.drawSprite("world-terrain", image.origin, image.size)
+  var rooms: Table[string, MapRoom]
+  for location in world.rooms: rooms[location.name] = location
+  for entity in state.objects.values:
+    let name = entity.getOrDefault("room").getStr
+    if not rooms.hasKey(name) or not entity.hasKey("x"): continue
+    let kind = entity["type"].getStr
+    let user = entity.getOrDefault("user").getStr
+    let color = seatColor(user)
+    let location = rooms[name]
+    if kind == "controller" and user.len > 0:
+      outline(world.roomPanel(location, panel), color, 2)
+    if kind in ["road", "constructedWall", "rampart", "constructionSite"]: continue
+    let at = world.tilePoint(location,
+      vec2(entity["x"].getFloat.float32, entity["y"].getFloat.float32), panel)
+    let radius = if kind == "creep": max(world.scale(panel), 1)
+      elif kind == "spawn": max(world.scale(panel) * 1.5, 2.5)
+      else: max(world.scale(panel), 1.5)
+    let marker = case kind
+      of "source": rgbx(239, 203, 80, 255)
+      of "mineral": rgbx(149, 127, 202, 255)
+      else: color
+    sk.drawRect(at - vec2(radius), vec2(radius * 2), marker)
+    if kind == "spawn": sk.drawRect(at - vec2(0.75), vec2(1.5), Neutral)
+  for location in world.rooms:
+    let area = world.roomPanel(location, panel)
+    if world.zoom >= 2:
+      label(location.name, area.origin + vec2(4), width = area.size.x - 8)
+    if location.name == room:
+      outline(GameUiPanel(origin: area.origin + vec2(3), size: area.size - vec2(6)),
+        rgbx(255, 237, 139, 255), 2)
+    elif location.name == hover: outline(area, Neutral, 1)
+  sk.popClipRect()
 
 proc drawHud() =
   ## Draw scores, room navigation, inspection, and replay transport.
@@ -141,6 +254,7 @@ proc drawHud() =
   glDisable(GL_BLEND)
   glActiveTexture(GL_TEXTURE0)
   glBindTexture(GL_TEXTURE_2D, sk.atlasTextureId())
+  glViewport(0, 0, window.size.x, window.size.y)
   sk.beginUi(window, window.size)
   let w = window.size.x.float32
   let h = window.size.y.float32
@@ -149,29 +263,15 @@ proc drawHud() =
   for slot in 0..1:
     let name = replay.header["metadata"]["config"]["players"][slot]["name"].getStr
     label(name & "  " & formatFloat(state.scores[slot].getFloat, ffDecimal, 0).strip(chars = {'.'}) & " GCL points",
-      vec2(14 + slot.float32 * 350, 36), if slot == 0: Blue else: Red, 340)
-  let minimap = vec2(w - 196, 82)
-  sk.drawRibbon(GameUiPanel(origin: minimap - vec2(6), size: vec2(188, 212)))
-  for name in terrain.keys:
-    let halves = name[1..^1].split('N')
-    if halves.len != 2: continue
-    let x = 10 - parseInt(halves[0])
-    let y = 10 - parseInt(halves[1])
-    let panel = GameUiPanel(origin: minimap + vec2(x.float32 * 16, y.float32 * 16), size: vec2(15))
-    var color = rgbx(62, 70, 80, 255)
-    for entity in state.objects.values:
-      if entity.getOrDefault("room").getStr == name and entity["type"].getStr == "controller":
-        color = seatColor(entity.getOrDefault("user").getStr)
-    sk.drawRect(panel.origin, panel.size, color)
-    if name == room: sk.drawRect(panel.origin + vec2(5), vec2(5), rgbx(255, 237, 139, 255))
-    if window.clicked(sk, panel):
-      room = name
-      selected = ""
-      cameraTarget = vec3(0)
-  label(room, minimap + vec2(0, 180), width = 170)
+      vec2(14 + slot.float32 * w / 2, 36), if slot == 0: Blue else: Red, w / 2 - 28)
+  label(room, vec2(14, 80), width = divider() - 28)
+  drawWorld()
+  sk.drawRect(vec2(divider() - 1, 68), vec2(2, h - transportHeight() - 68), PanelAccent)
+  sk.drawRect(vec2(divider() - 2, (68 + h - transportHeight()) / 2 - 20),
+    vec2(4, 40), Neutral)
   if state.objects.hasKey(selected):
     let entity = state.objects[selected]
-    let at = vec2(14, 82)
+    let at = vec2(14, 114)
     sk.drawRibbon(GameUiPanel(origin: at - vec2(6), size: vec2(260, 170)))
     label(entity["type"].getStr & " " & entity.getOrDefault("name").getStr, at, width = 250)
     label(&"({entity[\"x\"].getInt}, {entity[\"y\"].getInt})", at + vec2(0, 25))
@@ -213,9 +313,15 @@ proc main() =
     if paramStr(index) == "--replay" and index < paramCount(): path = paramStr(index + 1)
   require(path.len > 0, "Expected --replay FILE")
   replay = openReplay(readFile(path))
+  when defined(emscripten):
+    {.emit: """
+    `wheelScale` = EM_ASM_DOUBLE({ return navigator.platform.includes('Mac') ? 0.01 : -0.05; });
+    """.}
   for entry in replay.header["terrain"]: terrain[entry["room"].getStr] = entry["terrain"].getStr
+  world = initWorldMap(terrain)
   let builder = newHudAtlas(2048)
   builder.addDefaultFonts()
+  require(builder.addImage("world-terrain", world.terrainImage(terrain)), "World terrain does not fit the HUD atlas")
   builder.write("/tmp/screeps-atlas.png")
   (window, sk) = initGameWindow("Screeps PW", "/tmp/screeps-atlas.png", ivec2(1280, 800))
   renderer = initShapeRenderer()
@@ -232,15 +338,12 @@ proc main() =
     if state.scores.isNil or state.tick != tick:
       state = replay.stateAt(tick)
       nextState = replay.stateAt(min(tick + 1, replay.lastTick))
-    cameraDistance = clamp(cameraDistance - window.scrollDelta.y * 3, 12, 120)
-    discard applyRtsPan(cameraTarget, rtsPanDir(window), dt, cameraDistance, 25)
-    if window.mouseDown(MouseMiddle):
-      cameraTarget.x -= window.mouseDelta.x.float32 * cameraDistance / 800
-      cameraTarget.z -= window.mouseDelta.y.float32 * cameraDistance / 800
+    updateInput(dt)
     drawRoom()
-    if window.mousePressed(MouseLeft) and window.mousePos.y > 68 and
-        window.mousePos.y.float32 < window.size.y.float32 - transportHeight() and window.mousePos.x < window.size.x - 210:
-      let (x, y) = groundTile(pickGroundPoint(window.mousePos.vec2, window.size.vec2, viewProjection), 25, 50)
+    let viewport = roomViewport()
+    if window.mousePressed(MouseLeft) and viewport.contains(window.mousePos.vec2) and not splitDragging:
+      let (x, y) = groundTile(pickGroundPoint(window.mousePos.vec2 - viewport.origin,
+        viewport.size, viewProjection), 25, 50)
       selected = ""
       for id, entity in state.objects:
         if entity.getOrDefault("room").getStr == room and

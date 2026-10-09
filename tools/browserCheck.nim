@@ -1,6 +1,6 @@
 import
   std/[os, osproc, net, strutils, tempfiles, times],
-  rules,
+  replays, rules,
   ./common
 
 proc available(port: int) =
@@ -16,7 +16,8 @@ proc main() =
     run(@["nix", "develop", "path:" & Root, "--command", "env", "SCREEPS_PW_BROWSER_TOOLCHAIN=1",
       getAppFilename()] & commandLineParams())
     return
-  rules.require(paramCount() == 1 and fileExists(paramStr(1)), "Usage: browserCheck FULL_MATCH_REPLAY")
+  rules.require(paramCount() == 1 and fileExists(paramStr(1)), "Usage: browserCheck MATCH_REPLAY")
+  putEnv("SCREEPS_PW_REPLAY_TICKS", $openReplay(readFile(paramStr(1))).lastTick)
   available(8769)
   available(8770)
   let parent = getHomeDir() / ".local/share/screeps-pw/browser"

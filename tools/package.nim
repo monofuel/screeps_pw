@@ -5,31 +5,33 @@ import
 
 proc main() =
   ## Stage the native image, verified file players, and generated viewer hook.
-  require(paramCount() <= 1, "Usage: package [MAJOR.MINOR.PATCH]")
-  let version = if paramCount() == 1: paramStr(1) else: "0.1.0"
+  require(paramCount() <= 2, "Usage: package [MAJOR.MINOR.PATCH [EXISTING_GAME_IMAGE]]")
+  let version = if paramCount() >= 1: paramStr(1) else: "0.1.1"
   let parts = version.split('.')
   require(parts.len == 3, "Version must contain major, minor and patch")
   for part in parts:
     require(part.len > 0 and part.allCharsInSet({'0'..'9'}), "Version components must be integers")
-  let image = "screeps-pw:" & version
+  let existing = if paramCount() == 2: paramStr(2) else: ""
+  let image = if existing.len > 0: existing else: "screeps-pw:" & version
   let dependencies = getEnv("SCREEPS_PW_DEPS", getHomeDir() / ".local/share/screeps-pw/deps")
   let stage = Root / "build/coworld"
   createDir(stage / "players")
   createDir(stage / "tools")
-  for dependency in ["mummy", "webby", "crunchy", "nimsimd", "zippy"]:
-    let destination = Root / "build/dependencies" / dependency
-    if dirExists(destination): removeDir(destination)
-    copyDir(dependencies / dependency, destination)
-  let base = "sha256:bce4a765cd4cc81b25b5c90b153c6bfb9b3a39650199dfd0b02f476f714cfa2d"
-  discard command(["docker", "tag", base, "screeps-pw-engine:7ff9722"])
-  let release = %*{"version": version, "engineImage": base,
-    "engineRevision": "7ff972231c0a0a7aa91978297432ddb806976281",
-    "sdkRevision": "d9d2a9a91131e7ef2f7c9ef6ac35c53775a5a386",
-    "baselineSha256": hashFile(Root / "build/players/baseline.js"),
-    "adapterSha256": [hashFile(Root / "build/runtime/launcher.js"), hashFile(Root / "build/runtime/control.js")],
-    "dependenciesSha256": hashFile(Root / "nimby.lock")}
-  writeFile(Root / "build/release.json", $release)
-  run(["docker", "build", "--file", "coworld/Dockerfile", "--tag", image, Root])
+  if existing.len == 0:
+    for dependency in ["mummy", "webby", "crunchy", "nimsimd", "zippy"]:
+      let destination = Root / "build/dependencies" / dependency
+      if dirExists(destination): removeDir(destination)
+      copyDir(dependencies / dependency, destination)
+    let base = "sha256:bce4a765cd4cc81b25b5c90b153c6bfb9b3a39650199dfd0b02f476f714cfa2d"
+    discard command(["docker", "tag", base, "screeps-pw-engine:7ff9722"])
+    let release = %*{"version": version, "engineImage": base,
+      "engineRevision": "7ff972231c0a0a7aa91978297432ddb806976281",
+      "sdkRevision": "d9d2a9a91131e7ef2f7c9ef6ac35c53775a5a386",
+      "baselineSha256": hashFile(Root / "build/players/baseline.js"),
+      "adapterSha256": [hashFile(Root / "build/runtime/launcher.js"), hashFile(Root / "build/runtime/control.js")],
+      "dependenciesSha256": hashFile(Root / "nimby.lock")}
+    writeFile(Root / "build/release.json", $release)
+    run(["docker", "build", "--file", "coworld/Dockerfile", "--tag", image, Root])
   for player in ["baseline", "idle"]:
     copyFile(Root / "build/players" / (player & ".js"), stage / "players" / (player & ".js"))
   run(["nim", "c", "--out:" & stage / "tools/build_replay_viewer.sh", "tools/viewer.nim"])
