@@ -54,7 +54,7 @@ proc drag(browser: var Browser, x, y, targetX, targetY: int) =
 proc main() =
   ## Verify visible drawing, clocks, transport, rooms, resize, and bad input.
   var browser = connectBrowser()
-  let horizon = parseInt(getEnv("SCREEPS_PW_REPLAY_TICKS", $MatchTicks))
+  let horizon = parseInt(getEnv("SCREEPS_PW_REPLAY_TICKS", $DefaultTicks))
   var replay = openReplay(readFile(getEnv("SCREEPS_PW_REPLAY_FILE")))
   let compact = replay.header["terrain"].len == 16
   let startingRoom = replay.startingRoom()
@@ -124,7 +124,7 @@ proc main() =
   browser.click(1230, 90)
   browser.click(initialBox[0] + initialBox[2] div 2, initialBox[1] + initialBox[3] div 2)
   if getEnv("SCREEPS_PW_DIRECTOR_CHECK") == "1":
-    require(compact and horizon == MatchTicks, "Director checks need a full 4x4 replay with two active colonies")
+    require(compact and horizon == DefaultTicks, "Director checks need a full 4x4 replay with two active colonies")
     browser.click(580, 90)
     require(browser.evaluate("Module.replayAuto").getBool, "Auto did not resume")
     browser.click(630, 742)

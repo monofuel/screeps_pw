@@ -2,8 +2,10 @@ import
   std/[json, math]
 
 const
-  # Every match runs exactly this many ticks; raise it as matches get faster to simulate.
-  MatchTicks* = 1500
+  # Largest max_ticks a match config may request.
+  MaxTicks* = 8000
+  # Length of competition matches and local runs that do not choose one.
+  DefaultTicks* = 1500
   PolicyBytes* = 5 * 1024 * 1024
   PackageBytes* = 16 * 1024 * 1024
   ArchiveBytes* = 17 * 1024 * 1024
@@ -29,7 +31,8 @@ proc validPolicySize*(bytes: int64): bool =
 proc validateConfig*(config: JsonNode) =
   ## Require a finite two-seat episode.
   require(config.kind == JObject, "Config must be an object")
-  require(not config.hasKey("max_ticks"), "max_ticks is not configurable; matches run " & $MatchTicks & " ticks")
+  require(config.hasKey("max_ticks") and config["max_ticks"].kind == JInt and
+    config["max_ticks"].getInt in 1..MaxTicks, "max_ticks must be between 1 and " & $MaxTicks)
   require(config.hasKey("seed") and config["seed"].kind == JInt and
     config["seed"].getBiggestInt in low(int32).BiggestInt..high(int32).BiggestInt,
     "seed must be a signed 32-bit integer")
@@ -42,9 +45,9 @@ proc validateConfig*(config: JsonNode) =
     require(player.kind == JObject and player.hasKey("name") and
       player["name"].kind == JString and player["name"].getStr.len > 0, "Missing player name")
 
-proc matchResult*(opening, closing: array[2, float], ticks, seed: int): JsonNode =
-  ## Score only a completed match using cumulative account points.
-  require(ticks == MatchTicks, "Incomplete match")
+proc matchResult*(opening, closing: array[2, float], ticks, horizon, seed: int): JsonNode =
+  ## Score only a completed horizon using cumulative account points.
+  require(ticks == horizon and horizon in 1..MaxTicks, "Incomplete match")
   var scores: array[2, float]
   for slot in 0..1:
     require(classify(opening[slot]) notin {fcNan, fcInf, fcNegInf} and

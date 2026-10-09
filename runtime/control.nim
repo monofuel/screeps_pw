@@ -8,6 +8,7 @@ var
   initialized = false
   opening: array[2, float]
   configFile: JsonNode
+  horizon: int
   accounts: array[2, cstring]
 
 proc number(value: JsObject): float {.importjs: "Number(#)".} =
@@ -33,10 +34,11 @@ proc stop(error = "") : Future[void] {.async.} =
   process.send(toJs(%*{"finished": true, "error": error}))
 
 proc completed(): Future[void] {.async.} =
-  ## Observe committed turns and finalize the fixed match length.
+  ## Observe committed turns and finalize the configured match length.
   try:
     if not initialized:
       configFile = readJson("/episode/config.json")
+      horizon = configFile["max_ticks"].getInt
       let roster = readJson("/episode/roster.json")
       for slot in 0..1: accounts[slot] = cstring(roster[slot]["user"].getStr)
       let initial = readJson("/episode/initial.json")
@@ -45,14 +47,14 @@ proc completed(): Future[void] {.async.} =
       record(0, toJs(initial["objects"]), pair(0, 0))
       initialized = true
     let tick = int(number(await envGet("gameTime"))) - 1
-    rules.require(tick >= 1 and tick <= MatchTicks, "Completed turn outside tournament horizon")
+    rules.require(tick >= 1 and tick <= horizon, "Completed turn outside tournament horizon")
     let closing = points(await find("users", newJsObject()))
     let objects = await find("rooms.objects", newJsObject())
     record(tick, objects, pair(closing[0] - opening[0], closing[1] - opening[1]))
     if tick == 1 or tick mod 100 == 0:
       publishJson("/episode/progress.json", %*{"ticks": tick})
-    if tick == MatchTicks:
-      let verdict = matchResult(opening, closing, tick, configFile["seed"].getInt)
+    if tick == horizon:
+      let verdict = matchResult(opening, closing, tick, horizon, configFile["seed"].getInt)
       finishRecording($envValue("PW_REPLAY"), verdict)
       publishJson("/episode/progress.json", %*{"ticks": tick})
       publishJson("/episode/completed.json", verdict)

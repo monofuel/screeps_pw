@@ -38,11 +38,13 @@ proc main() =
   copyFile(Root / "build/players/wasm.zip", stage / "players/wasm.zip")
   run(["nim", "c", "--out:" & stage / "tools/build_replay_viewer.sh", "tools/viewer.nim"])
   let manifest = parseFile(Root / "coworld/coworld_manifest_template.json")
-  let ticks = manifest["game"]["results_schema"]["properties"]["ticks"]
-  require(ticks["minimum"].getInt == MatchTicks and ticks["maximum"].getInt == MatchTicks and
-    $MatchTicks & "-tick" in manifest["variants"][0]["name"].getStr and
-    "in " & $MatchTicks & " ticks" in manifest["game"]["description"].getStr,
-    "Manifest template must describe " & $MatchTicks & "-tick matches")
+  let competition = manifest["variants"][0]
+  require(manifest["game"]["config_schema"]["properties"]["max_ticks"]["maximum"].getInt == MaxTicks and
+    manifest["game"]["results_schema"]["properties"]["ticks"]["maximum"].getInt == MaxTicks and
+    competition["game_config"]["max_ticks"].getInt == DefaultTicks and
+    $DefaultTicks & "-tick" in competition["name"].getStr and
+    "in " & $DefaultTicks & " ticks" in manifest["game"]["description"].getStr,
+    "Manifest template must allow " & $MaxTicks & " ticks and default to " & $DefaultTicks)
   manifest["game"]["docs"]["readme"]["value"] = %readFile(Root / "README.md")
   writeFile(stage / "coworld_manifest_template.json", pretty(manifest))
   writeFile(stage / "compose.yaml", "services:\n  game:\n    image: " & image & "\n    platform: linux/amd64\n")

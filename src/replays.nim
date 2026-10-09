@@ -34,7 +34,7 @@ proc openReplay*(bytes: sink string): Replay =
   require(result.header["version"].getInt == 1, "Unsupported replay version")
   result.payload = 8 + headerLength
   result.lastTick = result.header["results"]["ticks"].getInt
-  require(result.lastTick >= 1, "Invalid replay horizon")
+  require(result.lastTick in 1..MaxTicks, "Invalid replay horizon")
   var nextOffset = 0
   var nextTick = 0
   for chunk in result.header["chunks"]:
