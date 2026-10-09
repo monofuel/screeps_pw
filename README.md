@@ -44,7 +44,7 @@ CommonJS file. See the [official Screeps API](https://docs.screeps.com/api/).
 | Starts | Center cells (1,1) and (2,2), indexed from the viewer's top-left: seat 0 W3N3 (32,9), seat 1 W2N2 (17,40) |
 | Assets | One spawn containing 300 energy, RCL1, GCL1, empty Memory |
 | Account CPU | 20 CPU; empty initial bucket; native replenishment and execution/memory guards |
-| Duration | Exactly 1,500 completed ticks |
+| Duration | Exactly 1,500 completed ticks in every match; not configurable |
 | Score | Closing cumulative account GCL points minus opening points |
 | Winner | Higher earned GCL wins; equal scores draw |
 | Colony loss | Previously earned points remain; the match continues |
@@ -174,9 +174,8 @@ make viewer
 make browser-test REPLAY=/absolute/path/to/match.replay
 ```
 
-The runner accepts `--ticks:NUMBER`, `--seed:NUMBER`, `--output:DIRECTORY`,
-and `--image:IMAGE`. Short horizons are for smoke checks; competition uses
-1,500 ticks. Artifacts default to `~/.local/share/screeps-pw/matches/`.
+The runner accepts `--seed:NUMBER`, `--output:DIRECTORY` and `--image:IMAGE`.
+Every match, including tests and certification, runs exactly 1,500 ticks. Artifacts default to `~/.local/share/screeps-pw/matches/`.
 Set `PW_TIMING=1` to write per-process stage and storage-call timing to
 `internal/timing-*.json` in the match directory; it adds measurable overhead.
 
@@ -292,7 +291,7 @@ must also be present. This override is optional.
 The game image owns both policy VMs and all engine processes. No nested Docker
 or separate player pods are required. The package declares the
 `coworld-player-seats/2` file-player contract, a 1,500-tick competition variant,
-a 600-tick certification fixture, private seat logs/status, a health endpoint,
+a 1,500-tick certification fixture, private seat logs/status, a health endpoint,
 global WebSocket Ping/Pong, and a static replay bundle.
 
 The public runtime retains the frozen official Node binary, engine installation,

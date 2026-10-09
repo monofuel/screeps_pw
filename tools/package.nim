@@ -6,7 +6,7 @@ import
 proc main() =
   ## Stage the native image, verified file players, and generated viewer hook.
   require(paramCount() <= 2, "Usage: package [MAJOR.MINOR.PATCH [EXISTING_GAME_IMAGE]]")
-  let version = if paramCount() >= 1: paramStr(1) else: "0.1.6"
+  let version = if paramCount() >= 1: paramStr(1) else: "0.1.8"
   let parts = version.split('.')
   require(parts.len == 3, "Version must contain major, minor and patch")
   for part in parts:
@@ -37,6 +37,11 @@ proc main() =
   copyFile(Root / "build/players/wasm.zip", stage / "players/wasm.zip")
   run(["nim", "c", "--out:" & stage / "tools/build_replay_viewer.sh", "tools/viewer.nim"])
   let manifest = parseFile(Root / "coworld/coworld_manifest_template.json")
+  let ticks = manifest["game"]["results_schema"]["properties"]["ticks"]
+  require(ticks["minimum"].getInt == MatchTicks and ticks["maximum"].getInt == MatchTicks and
+    $MatchTicks & "-tick" in manifest["variants"][0]["name"].getStr and
+    "in " & $MatchTicks & " ticks" in manifest["game"]["description"].getStr,
+    "Manifest template must describe " & $MatchTicks & "-tick matches")
   manifest["game"]["docs"]["readme"]["value"] = %readFile(Root / "README.md")
   writeFile(stage / "coworld_manifest_template.json", pretty(manifest))
   writeFile(stage / "compose.yaml", "services:\n  game:\n    image: " & image & "\n    platform: linux/amd64\n")

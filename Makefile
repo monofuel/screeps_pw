@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := build
 NIM ?= nim
-VERSION ?= 0.1.6
+VERSION ?= 0.1.8
 GAME_IMAGE ?=
 
 .PHONY: deps engine build wasm-example test integration upload-integration viewer browser-test director-browser-test package certify check

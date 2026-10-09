@@ -1,8 +1,8 @@
 import
-  std/[jsffi, json, tables],
+  std/[jsffi, json],
   nodeBridge
 
-const PublicFields = ["_id", "type", "room", "x", "y", "user", "name", "body",
+const PublicFields = [cstring"_id", "type", "room", "x", "y", "user", "name", "body",
   "hits", "hitsMax", "store", "storeCapacity", "storeCapacityResource", "energy",
   "energyCapacity", "level", "progress", "progressTotal", "reservation", "safeMode",
   "safeModeAvailable", "downgradeTime", "spawning", "ageTime", "fatigue", "actionLog",
@@ -10,10 +10,40 @@ const PublicFields = ["_id", "type", "room", "x", "y", "user", "name", "body",
   "mineralAmount", "resourceType", "amount", "decayTime"]
 
 var
-  header, frames, chunks: JsonNode
-  previous: Table[string, string]
+  header, chunks: JsonNode
+  frames, previous: JsObject
   offset = 0
   startTick = 0
+
+proc newArray(): JsObject {.importjs: "[@]".} =
+  ## Create a native array for per-tick replay data.
+
+proc newMap(): JsObject {.importjs: "new Map(@)".} =
+  ## Create a native map from entity id to encoded public fields.
+
+proc push(target, value: JsObject) {.importjs: "#.push(#)".} =
+  ## Append to a native array.
+
+proc pushText(target: JsObject, value: cstring) {.importjs: "#.push(#)".} =
+  ## Append an id to a native array.
+
+proc get(map: JsObject, key: cstring): cstring {.importjs: "#.get(#)".} =
+  ## Read an encoded entity, or undefined.
+
+proc put(map: JsObject, key, value: cstring) {.importjs: "#.set(#, #)".} =
+  ## Remember an encoded entity.
+
+proc contains(map: JsObject, key: cstring): bool {.importjs: "#.has(#)".} =
+  ## Check whether an entity is still present.
+
+proc keys(map: JsObject): JsObject {.importjs: "Array.from(#.keys())".} =
+  ## Snapshot the remembered entity ids.
+
+proc has(item: JsObject, key: cstring): bool {.importjs: "Object.prototype.hasOwnProperty.call(#, #)".} =
+  ## Match JSON field presence, including explicit nulls.
+
+proc gzip(value: cstring): JsObject {.importjs: "require('zlib').gzipSync(Buffer.from(#, 'utf8'))".} =
+  ## Compress replay JSON.
 
 proc buffer(value: cstring): JsObject {.importjs: "Buffer.from(#, 'utf8')".} =
   ## Encode replay JSON into bytes.
@@ -23,24 +53,22 @@ proc littleEndian(value: int): JsObject =
   result = require("buffer").Buffer.alloc(4)
   discard result.writeUInt32LE(value, 0)
 
-proc publicObjects*(objects: JsonNode): JsonNode =
+proc publicEntity(item: JsObject): JsObject =
   ## Retain only externally visible entity fields.
-  result = newJArray()
-  for item in objects:
-    var entity = newJObject()
-    for key in PublicFields:
-      if item.hasKey(key): entity[key] = item[key]
-    result.add entity
+  result = newJsObject()
+  for key in PublicFields:
+    if item.has(key): result[key] = item[key]
 
 proc flush() =
   ## Compress an independent seekable chunk.
-  if frames.len == 0: return
-  let bytes = require("zlib").gzipSync(buffer(cstring($frames)))
+  if frames.isNil or frames.length.to(int) == 0: return
+  let bytes = gzip(stringify(frames))
   discard fs.appendFileSync("/episode/replay.chunks", bytes)
-  chunks.add %*{"start": startTick, "end": frames[^1]["tick"],
+  let last = frames[frames.length.to(int) - 1]
+  chunks.add %*{"start": startTick, "end": last.tick.to(int),
     "offset": offset, "length": bytes.length.to(int)}
   offset += bytes.length.to(int)
-  frames = newJArray()
+  frames = newArray()
 
 proc beginRecording*(metadata, terrain: JsonNode) =
   ## Open a replay without keeping a full episode in memory.
@@ -52,30 +80,39 @@ proc beginRecording*(metadata, terrain: JsonNode) =
     publicTerrain.add %*{"room": entry["room"], "terrain": entry["terrain"]}
   header = %*{"version": 1, "tickRate": 1, "defaultSpeed": 10,
     "metadata": publicMetadata, "terrain": publicTerrain}
-  frames = newJArray()
+  frames = newArray()
+  previous = newMap()
   chunks = newJArray()
   writeText("/episode/replay.chunks", "")
 
-proc record*(tick: int, objects, scores: JsonNode) =
+proc record*(tick: int, objects, scores: JsObject) =
   ## Capture each committed state with a keyframe every hundred ticks.
-  if frames.len > 0 and tick >= startTick + 100: flush()
-  let keyframe = frames.len == 0
+  if frames.length.to(int) > 0 and tick >= startTick + 100: flush()
+  let keyframe = frames.length.to(int) == 0
   if keyframe:
     startTick = tick
-    previous.clear()
-  var
-    current = initTable[string, string]()
-    changed = newJArray()
-    removed = newJArray()
-  for entity in publicObjects(objects):
-    let id = entity["_id"].getStr
-    let encoded = $entity
-    current[id] = encoded
-    if previous.getOrDefault(id) != encoded: changed.add entity
-  for id in previous.keys:
-    if not current.hasKey(id): removed.add %id
-  frames.add %*{"tick": tick, "keyframe": keyframe, "scores": scores,
-    "upsert": changed, "remove": removed}
+    previous = newMap()
+  let
+    current = newMap()
+    changed = newArray()
+    removed = newArray()
+  for index in 0 ..< objects.length.to(int):
+    let entity = publicEntity(objects[index])
+    let id = entity["_id"].to(cstring)
+    let encoded = stringify(entity)
+    current.put(id, encoded)
+    if previous.get(id) != encoded: changed.push(entity)
+  let ids = previous.keys()
+  for index in 0 ..< ids.length.to(int):
+    let id = ids[index].to(cstring)
+    if id notin current: removed.pushText(id)
+  let frame = newJsObject()
+  frame.tick = tick
+  frame.keyframe = keyframe
+  frame.scores = scores
+  frame.upsert = changed
+  frame.remove = removed
+  frames.push(frame)
   previous = current
 
 proc finishRecording*(path: string, verdict: JsonNode) =

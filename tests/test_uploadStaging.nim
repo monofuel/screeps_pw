@@ -3,9 +3,8 @@ import
   replays, rules,
   ../tools/[common, sdk, zipPackages]
 
-proc stagedFiles(directory: string, contents: array[2, string], ticks = 3): int =
+proc stagedFiles(directory: string, contents: array[2, string]): int =
   let manifest = parseFile(Root / "dist/coworld_manifest.json")
-  manifest["certification"]["game_config"]["max_ticks"] = %ticks
   for slot in 0..1:
     let path = directory / ("policy-" & $slot & ".js")
     writeFile(path, contents[slot])
@@ -13,7 +12,7 @@ proc stagedFiles(directory: string, contents: array[2, string], ticks = 3): int 
     manifest["certification"]["players"][slot]["player_id"] = manifest["player"][slot]["id"]
   let path = directory / "manifest.json"
   writeFile(path, $manifest)
-  let args = sdkCommand(["run-episode", path, "--output-dir", directory / "episode", "--timeout-seconds", "60"])
+  let args = sdkCommand(["run-episode", path, "--output-dir", directory / "episode", "--timeout-seconds", "300"])
   let child = startProcess(args[0], workingDir = directory, args = args[1..^1], options = {poUsePath, poStdErrToStdOut})
   defer: child.close()
   let output = child.outputStream.readAll()
@@ -36,7 +35,7 @@ suite "Packaged game-hosted policy staging":
     let directory = createTempDir("accepted-", "", parent)
     check stagedEpisode(directory, [2 * 1024 * 1024 + 1, PolicyBytes]) == 0
     let result = parseFile(directory / "episode/results.json")
-    check result["ticks"].getInt == 3
+    check result["ticks"].getInt == MatchTicks
     check result["scores"] == %*[0, 0]
     var replay = openReplay(readFile(directory / "episode/replay"))
     check replay.startingRoom(0) == StartRooms[0]
@@ -56,8 +55,8 @@ suite "Packaged game-hosted policy staging":
   test "Extensionless ZIP staging executes WASM in both seats":
     let directory = createTempDir("wasm-", "", parent)
     let package = readFile(Root / "build/players/wasm.zip")
-    check stagedFiles(directory, [package, package], 6) == 0
-    check parseFile(directory / "episode/results.json")["ticks"].getInt == 6
+    check stagedFiles(directory, [package, package]) == 0
+    check parseFile(directory / "episode/results.json")["ticks"].getInt == MatchTicks
     for slot in 0..1:
       let log = readFile(directory / "episode/logs/policy_agent_" & $slot & ".log")
       check "ZIP_WASM_OK 13" in log
@@ -81,7 +80,7 @@ suite "Packaged game-hosted policy staging":
       let code = stagedFiles(directory, [idle, package])
       if expanded == PackageBytes:
         check code == 0
-        check parseFile(directory / "episode/results.json")["ticks"].getInt == 3
+        check parseFile(directory / "episode/results.json")["ticks"].getInt == MatchTicks
       else:
         check code != 0
         let failure = parseFile(directory / "episode/player_failure.json")

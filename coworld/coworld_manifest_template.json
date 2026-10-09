@@ -14,15 +14,14 @@
     },
     "config_schema": {
       "type": "object", "additionalProperties": false,
-      "required": ["tokens", "players", "seed", "max_ticks"],
+      "required": ["tokens", "players", "seed"],
       "properties": {
         "tokens": {"type": "array", "minItems": 2, "maxItems": 2,
           "items": {"type": "string", "minLength": 1}},
         "players": {"type": "array", "minItems": 2, "maxItems": 2,
           "items": {"type": "object", "additionalProperties": false, "required": ["name"],
             "properties": {"name": {"type": "string", "minLength": 1}}}},
-        "seed": {"type": "integer", "minimum": -2147483648, "maximum": 2147483647},
-        "max_ticks": {"type": "integer", "minimum": 1, "maximum": 6000}
+        "seed": {"type": "integer", "minimum": -2147483648, "maximum": 2147483647}
       }
     },
     "results_schema": {
@@ -31,7 +30,7 @@
       "properties": {
         "scores": {"type": "array", "minItems": 2, "maxItems": 2,
           "items": {"type": "number", "minimum": 0}},
-        "ticks": {"type": "integer", "minimum": 1, "maximum": 6000},
+        "ticks": {"type": "integer", "minimum": 1500, "maximum": 1500},
         "seed": {"type": "integer"},
         "outcome": {"type": "string", "enum": ["draw", "seat-0-wins", "seat-1-wins"]}
       }
@@ -51,10 +50,10 @@
   ],
   "variants": [{"id": "competition", "name": "1500-tick GCL race",
     "description": "One shared fixed 4x4 World, two fresh accounts two room transitions apart, highest earned account GCL points wins.",
-    "game_config": {"players": [{"name": "Blue"}, {"name": "Red"}], "seed": 2026, "max_ticks": 1500}}],
+    "game_config": {"players": [{"name": "Blue"}, {"name": "Red"}], "seed": 2026}}],
   "certification": {
     "game_config": {"players": [{"name": "Colony baseline"}, {"name": "WASM package example"}],
-      "seed": 2026, "max_ticks": 600},
+      "seed": 2026},
     "players": [{"player_id": "baseline"}, {"player_id": "wasm"}]
   }
 }

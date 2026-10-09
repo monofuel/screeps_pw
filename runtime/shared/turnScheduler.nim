@@ -15,6 +15,19 @@ proc invoke(callback, receiver, arguments: JsObject): JsObject {.importjs: "#.ap
 proc argumentArray(arguments: JsObject): JsObject {.importjs: "Array.from(#)".} =
   ## Copy only the intercepted coordinator timer's arguments.
 
+proc installRoomScheduler*(timers: JsObject, entrypoint: cstring) =
+  ## Start the official processor's next room fetch without Node's 1 ms timer floor.
+  if entrypoint != resolveModule("@screeps/engine/dist/processor.js"): return
+  let timeout = timers.setTimeout
+  let immediate = timers.setImmediate
+  timers.setTimeout = proc(): JsObject =
+    ## Forward unrelated timers unchanged.
+    let arguments = jsArguments
+    if jsTypeOf(arguments[0]) == "function" and arguments[0].name.to(cstring) == "loop".cstring and
+        arguments.length.to(int) == 2 and arguments[1].to(float) == 0:
+      return invoke(immediate, timers, toJs([arguments[0]]))
+    invoke(timeout, timers, arguments)
+
 proc installTurnScheduler*(config, timers: JsObject, entrypoint: cstring): TurnScheduler =
   ## Remove sleeps only between committed turns of the official coordinator.
   if not config.hasOwnProperty("engine") or

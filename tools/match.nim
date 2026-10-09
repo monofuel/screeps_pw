@@ -11,7 +11,7 @@ proc interrupt() {.noconv.} =
   ## Request episode cleanup on Ctrl-C.
   interrupted = true
 
-proc runMatch*(policies: array[2, string], ticks = CompetitionTicks, seed = 2026,
+proc runMatch*(policies: array[2, string], seed = 2026,
     output = "", image = DefaultImage): string =
   ## Run a disposable official engine without pacing or a wall-clock cutoff.
   let parent = if output.len > 0: absolutePath(output)
@@ -20,8 +20,7 @@ proc runMatch*(policies: array[2, string], ticks = CompetitionTicks, seed = 2026
   result = createTempDir(now().utc.format("yyyyMMdd'T'HHmmss'Z'") & "-", "", parent)
   let directory = result
   let config = %*{"tokens": ["local-0", "local-1"], "players": [
-    {"name": policies[0].extractFilename}, {"name": policies[1].extractFilename}],
-    "max_ticks": ticks, "seed": seed}
+    {"name": policies[0].extractFilename}, {"name": policies[1].extractFilename}], "seed": seed}
   validateConfig(config)
   createDir(directory / "input")
   createDir(directory / "internal")
@@ -85,7 +84,6 @@ proc main() =
   ## Parse the two-policy local match command.
   var
     policies: seq[string]
-    ticks = CompetitionTicks
     seed = 2026
     output = ""
     image = DefaultImage
@@ -94,14 +92,13 @@ proc main() =
     of cmdArgument: policies.add key
     of cmdLongOption, cmdShortOption:
       case key
-      of "ticks": ticks = parseInt(value)
       of "seed": seed = parseInt(value)
       of "output": output = value
       of "image": image = value
       else: raise newException(ValueError, "Unknown argument: " & key)
     of cmdEnd: discard
   rules.require(policies.len == 2,
-    "Usage: build/match POLICY0 POLICY1 [--ticks:1500 --seed:2026 --output:DIR --image:IMAGE]")
-  discard runMatch([policies[0], policies[1]], ticks, seed, output, image)
+    "Usage: build/match POLICY0 POLICY1 [--seed:2026 --output:DIR --image:IMAGE]")
+  discard runMatch([policies[0], policies[1]], seed, output, image)
 
 when isMainModule: main()

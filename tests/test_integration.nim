@@ -31,9 +31,9 @@ proc interruptedEpisode(signal: cint, infrastructure: bool) =
 
 suite "Disposable official World":
   test "Exact starts, completed ticks and snapshot playback":
-    let directory = runMatch([Root / "build/players/idle.js", Root / "build/players/idle.js"], 101)
+    let directory = runMatch([Root / "build/players/idle.js", Root / "build/players/idle.js"])
     let result = parseFile(directory / "results.json")
-    check result["ticks"].getInt == 101
+    check result["ticks"].getInt == MatchTicks
     check result["scores"] == %*[0, 0]
     let initial = parseFile(directory / "initial.json")
     check initial["terrain"].len == WorldRooms.len
@@ -91,7 +91,7 @@ suite "Disposable official World":
     check startingCells.len == 2
     var replay = openReplay(readFile(directory / "match.replay"))
     check not replay.header["metadata"]["config"].hasKey("tokens")
-    for tick in [0, 1, 99, 100, 101, 3]:
+    for tick in [0, 1, 99, 100, 101, MatchTicks, 3]:
       check replay.stateAt(tick).tick == tick
     let start = replay.stateAt(0)
     check replay.startingRoom(0) == "W3N3"
@@ -101,10 +101,10 @@ suite "Disposable official World":
       check start.objects.hasKey(entity["_id"].getStr)
   test "Native routing uses the bounded 4x4 terrain":
     run(["nim", "js", "tests/fixtures/navigation.nim"])
-    let directory = runMatch([Root / "build/fixtures/navigation.js", Root / "build/players/idle.js"], 300)
+    let directory = runMatch([Root / "build/fixtures/navigation.js", Root / "build/players/idle.js"])
     check "SMALL_WORLD_NAVIGATION_OK" in readFile(directory / "private/seat-0.log")
     check "Error" notin readFile(directory / "private/seat-0.log")
-    let reverse = runMatch([Root / "build/players/idle.js", Root / "build/fixtures/navigation.js"], 300)
+    let reverse = runMatch([Root / "build/players/idle.js", Root / "build/fixtures/navigation.js"])
     check "SMALL_WORLD_NAVIGATION_OK" in readFile(reverse / "private/seat-1.log")
     check "Error" notin readFile(reverse / "private/seat-1.log")
   test "The official runner loads a policy at the full 5 MiB limit":
@@ -112,15 +112,15 @@ suite "Disposable official World":
     let idle = readFile(Root / "build/players/idle.js")
     writeFile(path, idle & "\n/*" & repeat(' ', PolicyBytes - idle.len - 5) & "*/")
     check getFileSize(path) == PolicyBytes
-    let directory = runMatch([path, Root / "build/players/idle.js"], 3)
-    check parseFile(directory / "results.json")["ticks"].getInt == 3
+    let directory = runMatch([path, Root / "build/players/idle.js"])
+    check parseFile(directory / "results.json")["ticks"].getInt == MatchTicks
     check "Error" notin readFile(directory / "private/seat-0.log")
   test "ZIP modules, WASM and binary data drive actions in either seat":
     for policies in [[Root / "build/players/wasm.zip", Root / "build/players/idle.js"],
         [Root / "build/players/idle.js", Root / "build/players/wasm.zip"],
         [Root / "build/players/wasm.zip", Root / "build/players/wasm.zip"]]:
-      let directory = runMatch(policies, 6)
-      check parseFile(directory / "results.json")["ticks"].getInt == 6
+      let directory = runMatch(policies)
+      check parseFile(directory / "results.json")["ticks"].getInt == MatchTicks
       var replay = openReplay(readFile(directory / "match.replay"))
       let state = replay.stateAt(6)
       for slot in 0..1:
@@ -137,29 +137,32 @@ suite "Disposable official World":
         check found
   test "Policy errors stay private and never terminate native gameplay":
     run(["nim", "js", "tests/fixtures/throwing.nim"])
-    let directory = runMatch([Root / "build/fixtures/throwing.js", Root / "build/players/idle.js"], 30)
-    check parseFile(directory / "results.json")["ticks"].getInt == 30
-    check "PRIVATE_POLICY_SENTINEL" in readFile(directory / "private/seat-0.log")
-    check "PRIVATE_POLICY_SENTINEL" notin readFile(directory / "private/seat-1.log")
-    check "PRIVATE_POLICY_SENTINEL" notin readFile(directory / "results.json")
-    var replay = openReplay(readFile(directory / "match.replay"))
-    check "PRIVATE_POLICY_SENTINEL" notin $replay.header
+    for slot in 0..1:
+      var policies = [Root / "build/players/idle.js", Root / "build/players/idle.js"]
+      policies[slot] = Root / "build/fixtures/throwing.js"
+      let directory = runMatch(policies)
+      check parseFile(directory / "results.json")["ticks"].getInt == MatchTicks
+      check "PRIVATE_POLICY_SENTINEL" in readFile(directory / "private/seat-" & $slot & ".log")
+      check "PRIVATE_POLICY_SENTINEL" notin readFile(directory / "private/seat-" & $(1 - slot) & ".log")
+      check "PRIVATE_POLICY_SENTINEL" notin readFile(directory / "results.json")
+      var replay = openReplay(readFile(directory / "match.replay"))
+      check "PRIVATE_POLICY_SENTINEL" notin $replay.header
   test "Infinite scripts are bounded by the official runtime":
     run(["nim", "js", "tests/fixtures/infinite.nim"])
-    let directory = runMatch([Root / "build/fixtures/infinite.js", Root / "build/players/idle.js"], 5)
-    check parseFile(directory / "results.json")["ticks"].getInt == 5
+    let directory = runMatch([Root / "build/fixtures/infinite.js", Root / "build/players/idle.js"])
+    check parseFile(directory / "results.json")["ticks"].getInt == MatchTicks
     check "timed out" in readFile(directory / "private/seat-0.log")
   test "Native VM denies host modules and process access":
     run(["nim", "js", "tests/fixtures/sandbox.nim"])
-    let directory = runMatch([Root / "build/fixtures/sandbox.js", Root / "build/players/idle.js"], 3)
-    check parseFile(directory / "results.json")["ticks"].getInt == 3
+    let directory = runMatch([Root / "build/fixtures/sandbox.js", Root / "build/players/idle.js"])
+    check parseFile(directory / "results.json")["ticks"].getInt == MatchTicks
     check "SANDBOX_GUARDS_OK" in readFile(directory / "private/seat-0.log")
     check "HOST_MODULE_EXPOSED" notin readFile(directory / "private/seat-0.log")
     check "HOST_PROCESS_EXPOSED" notin readFile(directory / "private/seat-0.log")
   test "Oversized VM allocations remain an account error":
     run(["nim", "js", "tests/fixtures/heap.nim"])
-    let directory = runMatch([Root / "build/fixtures/heap.js", Root / "build/players/idle.js"], 3)
-    check parseFile(directory / "results.json")["ticks"].getInt == 3
+    let directory = runMatch([Root / "build/fixtures/heap.js", Root / "build/players/idle.js"])
+    check parseFile(directory / "results.json")["ticks"].getInt == MatchTicks
     let log = readFile(directory / "private/seat-0.log").toLowerAscii()
     check "memory limit" in log or "allocation failed" in log
   test "Cancellation removes the disposable world without a completed result":
