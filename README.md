@@ -158,6 +158,8 @@ uv tool run --from 'coworld[auth]==0.1.56' coworld submit YOUR_POLICY_REF --leag
 Replace `YOUR_POLICY_REF` with the exact `name:vN` printed by `upload-policy`.
 You do not need Docker, Nim, or a game build to upload an existing JavaScript
 bot. Watch completed matches from the league's episode pages.
+The league owner can start a round immediately with `make round`; run it inside
+`nix develop` on NixOS so the API helper can load libcurl.
 
 Policy versions belong to the uploading player. For another owned player,
 `nim r tools/playerUpload.nim PLAYER_ID POLICY_FILE POLICY_NAME` uses a private

@@ -547,3 +547,6 @@ staging checks and local certification (10/10) pass. Public 0.1.10 is
 `sha256:6e479f6570d79400b7fa9a45318181702e17a1e6b199214f2428a58537b04176`,
 source commit `5648571`. Hosted certification passes and the league reports
 this Coworld. Transcripts are `~/.local/share/screeps-pw/ticks-*.log`.
+Hosted rounds 50 and 51 run on 0.1.10. Round 51 completes all twelve episodes
+without errors, each with `max_ticks` 1,500, and a median episode run of 18 s.
+`make round` posts the league's `trigger-round` request through `tools/api.nim`.
