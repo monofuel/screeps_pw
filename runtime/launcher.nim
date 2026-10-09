@@ -143,6 +143,10 @@ proc launch(): Future[void] {.async.} =
     setEnv("DB_PATH", "/world/db.json")
     setEnv("MODFILE", "/episode/mods.json")
     setEnv("DRIVER_MODULE", "@screeps/driver")
+    # Matches have two players, but running both seats concurrently is unsafe here:
+    # control's private log routing tracks one current user, and the official
+    # driver's accessibleRooms cache returns undefined to a concurrent first run,
+    # costing one seat its first tick. Fix both before raising this to 2.
     setEnv("RUNNER_THREADS", "1")
     common.configManager.load()
     let storage = startChild("storage", "/opt/screeps/node_modules/@screeps/storage/bin/start.js")
