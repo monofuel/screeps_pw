@@ -370,3 +370,25 @@ build/match build/players/baseline.js build/players/baseline.js --output:/home/m
 build/match build/players/baseline.js build/players/baseline.js --output:/home/monofuel/.local/share/screeps-pw/fair-selfplay-2
 make browser-test REPLAY=~/.local/share/screeps-pw/fair-selfplay-1/20261009T192352Z-yXyg6Vf5/match.replay
 ```
+
+Source commit `90f113d154eb676cf3fe2af4373817a7c87e2bb1` is pushed to the public
+GitHub repository. Public 0.1.5 is `cow_98df377c-dcd7-4a79-b4d9-8618704acffe`,
+manifest hash
+`sha256:74f7bf3a4f5352b3de5584251529be804e49ec95e5c4e8e73ba18610b6b8cbf3`.
+Its rebuilt hosted image is
+`public.ecr.aws/q5f4m8t9/cogames@sha256:63d3ea87a29f11413dc6cc1561e95ff15b8f65daef2632a53b3e5d95774634ea`.
+All ten hosted certification steps and five upload smoke episodes pass.
+The existing game's current and canonical pointers both resolve to 0.1.5;
+the league response is otherwise identical before and after publication.
+Existing entrants, settings and historical results are preserved.
+
+The actual hosted viewer passes the browser interaction checks against smoke
+`ereq_18c7e502-b528-46db-82ba-f6dd265b9ba0`. Its 600-tick replay confirms both
+home rooms have two sources and spawns at `(32,9)` and `(17,40)`; artifacts are
+`~/.local/share/screeps-pw/fair-hosted.replay` and
+`~/.local/share/screeps-pw/browser/check-06IWpKx6/`.
+The upload transcript is `~/.local/share/screeps-pw/fair-upload.log`.
+Publication uses an isolated copy of the existing user credential, preserving
+the shared active-player selection. A fresh round is requested on the existing
+league; the platform acknowledgement is
+`~/.local/share/screeps-pw/fair-trigger-round.json`.
