@@ -532,3 +532,18 @@ Transcripts are `~/.local/share/screeps-pw/single-*.log`.
 Hosted round 48 (`round_5a822cc2-0275-41a7-9e97-cdad1f1ea5b7`) runs on 0.1.9 and
 completes all twelve episodes without errors in 1 m 45 s; the median episode
 runs 22 s (max 26 s). Unchanged entrants score exactly as in round 47 on 0.1.8.
+
+## Polyworld-style match length — 0.1.10
+
+Configs again follow the Polyworld coworlds: `max_ticks` is required and accepts
+1 through `MaxTicks` (8,000); the competition variant and local runner default
+to `DefaultTicks` (1,500); certification runs 600 ticks. This replaces the
+fixed tick count of 0.1.8 and 0.1.9. A default 1,500-tick baseline match replays
+identically to 0.1.9, and a local `--ticks:8001` request is rejected.
+
+`make test`, `make check`, `make integration` (10/10, 31 s), five packaged
+staging checks and local certification (10/10) pass. Public 0.1.10 is
+`cow_d9435755-061d-4997-91fc-494517d1d976`, manifest hash
+`sha256:6e479f6570d79400b7fa9a45318181702e17a1e6b199214f2428a58537b04176`,
+source commit `5648571`. Hosted certification passes and the league reports
+this Coworld. Transcripts are `~/.local/share/screeps-pw/ticks-*.log`.
