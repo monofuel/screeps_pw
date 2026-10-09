@@ -529,3 +529,6 @@ Public 0.1.9 is `cow_752982d2-d3bd-47d1-8dd3-f4be5bc11bc3`, manifest hash
 `sha256:5262a136773c2579d12d97abc37289ba6d56a498b9b871ba266c6ce862ac672e`,
 source commit `6dc9bf5`. Hosted certification passes all ten steps.
 Transcripts are `~/.local/share/screeps-pw/single-*.log`.
+Hosted round 48 (`round_5a822cc2-0275-41a7-9e97-cdad1f1ea5b7`) runs on 0.1.9 and
+completes all twelve episodes without errors in 1 m 45 s; the median episode
+runs 22 s (max 26 s). Unchanged entrants score exactly as in round 47 on 0.1.8.
