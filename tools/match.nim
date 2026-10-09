@@ -57,6 +57,7 @@ proc runMatch*(policies: array[2, string], ticks = CompetitionTicks, seed = 2026
       "--tmpfs", "/world:rw,mode=1777,size=256m", "--volume", directory & ":/episode",
       "--volume", directory / "input" & ":/episode/input:ro", "--entrypoint", "node",
       "--env", "PW_REPLAY=/episode/match.replay", "--env", "PW_RESULTS=/episode/results.json",
+      "--env", "PW_TIMING=" & getEnv("PW_TIMING"),
       imageId, "/episode/input/launcher.js"])
     created = true
     discard command(["docker", "start", container])

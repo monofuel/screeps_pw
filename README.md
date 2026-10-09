@@ -177,6 +177,8 @@ make browser-test REPLAY=/absolute/path/to/match.replay
 The runner accepts `--ticks:NUMBER`, `--seed:NUMBER`, `--output:DIRECTORY`,
 and `--image:IMAGE`. Short horizons are for smoke checks; competition uses
 1,500 ticks. Artifacts default to `~/.local/share/screeps-pw/matches/`.
+Set `PW_TIMING=1` to write per-process stage and storage-call timing to
+`internal/timing-*.json` in the match directory; it adds measurable overhead.
 
 `make engine` pulls the immutable public runtime from the published 0.1.2
 Coworld package. Its upstream Screeps revision is

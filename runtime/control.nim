@@ -2,7 +2,7 @@ import
   std/[asyncjs, jsffi, json],
   nodeBridge, turnScheduler,
   rules,
-  ./recording
+  ./[recording, timing]
 
 var
   scheduling: TurnScheduler
@@ -56,6 +56,7 @@ proc completed(): Future[void] {.async.} =
 proc install(config: JsObject) =
   ## Install trusted tournament hooks through the official mod interface.
   if not config.hasOwnProperty("engine"): return
+  installTiming(config)
   config.engine.mainLoopMinDuration = 1
   scheduling = installTurnScheduler(config, nodeTimers, process.argv[1].to(cstring))
   config.engine.mainLoopCustomStage = completed
