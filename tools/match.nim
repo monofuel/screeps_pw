@@ -100,7 +100,7 @@ proc main() =
       else: raise newException(ValueError, "Unknown argument: " & key)
     of cmdEnd: discard
   rules.require(policies.len == 2,
-    "Usage: build/match POLICY0 POLICY1 [--ticks:6000 --seed:2026 --output:DIR --image:IMAGE]")
+    "Usage: build/match POLICY0 POLICY1 [--ticks:1500 --seed:2026 --output:DIR --image:IMAGE]")
   discard runMatch([policies[0], policies[1]], ticks, seed, output, image)
 
 when isMainModule: main()

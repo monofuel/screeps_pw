@@ -4,7 +4,7 @@
   "players_per_user": 2,
   "game": {
     "name": "Screeps PW",
-    "description": "Two native Screeps World policies race to earn GCL in 6000 ticks, with 3D Polyworld replays.",
+    "description": "Two native Screeps World policies race to earn GCL in 1500 ticks, with 3D Polyworld replays.",
     "owner": "monofuel",
     "player_runtime": "game-hosted",
     "runnable": {
@@ -49,9 +49,9 @@
     {"id": "wasm", "name": "WASM package example", "type": "player", "file": "players/wasm.zip",
       "description": "Tiny purpose-built example combining JavaScript, WASM addition and binary data to spawn a creep."}
   ],
-  "variants": [{"id": "competition", "name": "6000-tick GCL race",
+  "variants": [{"id": "competition", "name": "1500-tick GCL race",
     "description": "One shared fixed 4x4 World, two fresh accounts two room transitions apart, highest earned account GCL points wins.",
-    "game_config": {"players": [{"name": "Blue"}, {"name": "Red"}], "seed": 2026, "max_ticks": 6000}}],
+    "game_config": {"players": [{"name": "Blue"}, {"name": "Red"}], "seed": 2026, "max_ticks": 1500}}],
   "certification": {
     "game_config": {"players": [{"name": "Colony baseline"}, {"name": "WASM package example"}],
       "seed": 2026, "max_ticks": 600},

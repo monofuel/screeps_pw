@@ -44,7 +44,7 @@ CommonJS file. See the [official Screeps API](https://docs.screeps.com/api/).
 | Starts | Center cells (1,1) and (2,2), indexed from the viewer's top-left: seat 0 W3N3 (32,9), seat 1 W2N2 (17,40) |
 | Assets | One spawn containing 300 energy, RCL1, GCL1, empty Memory |
 | Account CPU | 20 CPU; empty initial bucket; native replenishment and execution/memory guards |
-| Duration | Exactly 6,000 completed ticks |
+| Duration | Exactly 1,500 completed ticks |
 | Score | Closing cumulative account GCL points minus opening points |
 | Winner | Higher earned GCL wins; equal scores draw |
 | Colony loss | Previously earned points remain; the match continues |
@@ -75,7 +75,7 @@ sleep or an internal whole-match wall-clock cutoff. Actual throughput depends
 on scripts, engine work, and I/O. Script CPU and memory guards remain enabled.
 
 Completed replays default to **10x playback: 10 ticks per second**. A full
-competition replay takes ten minutes. Normal 1x playback is one tick per second.
+competition replay takes two and a half minutes. Normal 1x playback is one tick per second.
 Playback speed does not affect simulation or scores.
 
 Hosted episodes have the platform's required watchdog, declared as 100 minutes.
@@ -176,7 +176,7 @@ make browser-test REPLAY=/absolute/path/to/match.replay
 
 The runner accepts `--ticks:NUMBER`, `--seed:NUMBER`, `--output:DIRECTORY`,
 and `--image:IMAGE`. Short horizons are for smoke checks; competition uses
-6,000 ticks. Artifacts default to `~/.local/share/screeps-pw/matches/`.
+1,500 ticks. Artifacts default to `~/.local/share/screeps-pw/matches/`.
 
 `make engine` pulls the immutable public runtime from the published 0.1.2
 Coworld package. Its upstream Screeps revision is
@@ -289,7 +289,7 @@ must also be present. This override is optional.
 
 The game image owns both policy VMs and all engine processes. No nested Docker
 or separate player pods are required. The package declares the
-`coworld-player-seats/2` file-player contract, a 6,000-tick competition variant,
+`coworld-player-seats/2` file-player contract, a 1,500-tick competition variant,
 a 600-tick certification fixture, private seat logs/status, a health endpoint,
 global WebSocket Ping/Pong, and a static replay bundle.
 

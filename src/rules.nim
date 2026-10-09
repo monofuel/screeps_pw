@@ -2,7 +2,9 @@ import
   std/[json, math]
 
 const
-  CompetitionTicks* = 6000
+  MaxTicks* = 6000
+  # League horizon; raise it toward MaxTicks as matches get faster to simulate.
+  CompetitionTicks* = 1500
   PolicyBytes* = 5 * 1024 * 1024
   PackageBytes* = 16 * 1024 * 1024
   ArchiveBytes* = 17 * 1024 * 1024
@@ -29,7 +31,7 @@ proc validateConfig*(config: JsonNode) =
   ## Require a finite two-seat episode.
   require(config.kind == JObject, "Config must be an object")
   require(config.hasKey("max_ticks") and config["max_ticks"].kind == JInt and
-    config["max_ticks"].getInt in 1..CompetitionTicks, "max_ticks must be between 1 and 6000")
+    config["max_ticks"].getInt in 1..MaxTicks, "max_ticks must be between 1 and " & $MaxTicks)
   require(config.hasKey("seed") and config["seed"].kind == JInt and
     config["seed"].getBiggestInt in low(int32).BiggestInt..high(int32).BiggestInt,
     "seed must be a signed 32-bit integer")
@@ -44,7 +46,7 @@ proc validateConfig*(config: JsonNode) =
 
 proc matchResult*(opening, closing: array[2, float], ticks, horizon, seed: int): JsonNode =
   ## Score only a completed horizon using cumulative account points.
-  require(ticks == horizon and horizon in 1..CompetitionTicks, "Incomplete match")
+  require(ticks == horizon and horizon in 1..MaxTicks, "Incomplete match")
   var scores: array[2, float]
   for slot in 0..1:
     require(classify(opening[slot]) notin {fcNan, fcInf, fcNegInf} and
