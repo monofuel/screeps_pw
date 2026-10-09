@@ -75,6 +75,8 @@ proc main() =
     require(epochTime() < deadline, "Viewer never reported ready")
     sleep(250)
   let first = browser.tick()
+  require(browser.evaluate("Module.replayAuto").getBool, "Auto is not enabled by default")
+  require(browser.evaluate("Module.replayRoom").getStr == startingRoom, "Auto did not start in the first player's room")
   echo "Browser viewport: ", browser.evaluate("[innerWidth,innerHeight,Module.canvas.width,Module.canvas.height]")
   sleep(2000)
   require(browser.tick() - first in 17..23, "Default playback is not ten ticks per second")
@@ -104,6 +106,7 @@ proc main() =
     "Initial room outline is missing")
   browser.click(targetBox[0] + targetBox[2] div 2, targetBox[1] + targetBox[3] div 2)
   let switched = browser.picture()
+  require(not browser.evaluate("Module.replayAuto").getBool, "Room selection did not enter Manual")
   require(switched.pixels(targetBox[0], targetBox[1], targetBox[2], targetBox[3], 255, 237, 139) > 100,
     "Map click did not select the other room")
   require(switched.pixels(initialBox[0], initialBox[1], initialBox[2], initialBox[3], 255, 237, 139) == 0,
@@ -120,10 +123,78 @@ proc main() =
   require(zoomed.difference(panned, 670, 114, 584, 584) > 10000, "World map did not pan")
   browser.click(1230, 90)
   browser.click(initialBox[0] + initialBox[2] div 2, initialBox[1] + initialBox[3] div 2)
+  if getEnv("SCREEPS_PW_DIRECTOR_CHECK") == "1":
+    require(compact and horizon == 6000, "Director checks need a full 4x4 replay with two active colonies")
+    browser.click(580, 90)
+    require(browser.evaluate("Module.replayAuto").getBool, "Auto did not resume")
+    browser.click(630, 742)
+    browser.click(174, 742)
+    let hold = epochTime()
+    while epochTime() - hold < 28:
+      require(browser.evaluate("Module.replayRoom").getStr == startingRoom, "Auto cut before the 30-second hold")
+      sleep(1000)
+    let cutDeadline = hold + 35
+    while browser.evaluate("Module.replayRoom").getStr == startingRoom:
+      require(epochTime() < cutDeadline, "Auto did not tour the second active colony")
+      sleep(250)
+    let cut = browser.picture()
+    require(cut.pixels(targetBox[0], targetBox[1], targetBox[2], targetBox[3], 255, 237, 139) > 100,
+      "Auto cut did not move the map outline")
+    require(cut.pixels(initialBox[0], initialBox[1], initialBox[2], initialBox[3], 255, 237, 139) == 0,
+      "Auto cut left the previous map outline")
+    require(browser.evaluate("Module.replayCameraDistance").getFloat == 90, "Auto cut did not use whole-room framing")
+    require(browser.evaluate("Module.replaySelection").getStr.len == 0, "Auto cut retained inspected objects")
+    let autoRoom = browser.evaluate("Module.replayRoom").getStr
+    browser.click(174, 742)
+    browser.click(460, 742)
+    sleep(2000)
+    require(browser.evaluate("Module.replayRoom").getStr == autoRoom, "Paused Auto changed rooms")
+    discard browser.call("Input.dispatchMouseEvent", %*{
+      "type": "mouseWheel", "x": 960, "y": 410, "deltaX": 0, "deltaY": -100})
+    sleep(250)
+    require(browser.evaluate("Module.replayAuto").getBool, "Map zoom disabled Auto")
+    browser.drag(960, 410, 980, 420)
+    require(browser.evaluate("Module.replayAuto").getBool, "Map pan disabled Auto")
+    browser.click(1230, 90)
+    discard browser.call("Input.dispatchMouseEvent", %*{"type": "mouseMoved", "x": 300, "y": 400})
+    discard browser.call("Input.dispatchMouseEvent", %*{
+      "type": "mouseWheel", "x": 300, "y": 400, "deltaX": 0, "deltaY": -100})
+    sleep(250)
+    require(not browser.evaluate("Module.replayAuto").getBool, "3D zoom did not enter Manual")
+    browser.click(174, 742)
+    let manualHold = epochTime()
+    while epochTime() - manualHold < 32:
+      require(browser.evaluate("Module.replayRoom").getStr == autoRoom, "Manual mode resumed itself")
+      sleep(1000)
+    browser.click(580, 90)
+    let resumed = epochTime()
+    require(browser.evaluate("Module.replayRoom").getStr == autoRoom, "Resuming Auto jumped rooms")
+    while epochTime() - resumed < 28:
+      require(browser.evaluate("Module.replayRoom").getStr == autoRoom, "Resumed Auto cut before its fresh hold")
+      sleep(1000)
+    let resumeDeadline = resumed + 35
+    while browser.evaluate("Module.replayRoom").getStr == autoRoom:
+      require(epochTime() < resumeDeadline, "Resumed Auto did not tour back to the other colony")
+      sleep(250)
+    browser.click(174, 742)
+    browser.click(initialBox[0] + initialBox[2] div 2, initialBox[1] + initialBox[3] div 2)
+    echo "Real-time Auto holds, room cuts, map outline, and manual takeover passed"
+  browser.click(580, 90)
   browser.drag(640, 400, 800, 400)
+  require(browser.evaluate("Module.replayAuto").getBool, "Divider resize disabled Auto")
   let resized = browser.picture()
   require(resized.pixels(798, 350, 4, 100, 176, 185, 195) >= 140, "Pane divider did not resize")
   require(resized.pixels(816, 120, 440, 570, 87, 99, 117) > 10000, "Map terrain disappeared after pane resize")
+  browser.click(300, 400)
+  require(not browser.evaluate("Module.replayAuto").getBool, "3D scene click did not enter Manual")
+  browser.click(740, 90)
+  require(browser.evaluate("Module.replayAuto").getBool, "Auto toggle did not resume after a scene click")
+  discard browser.call("Input.dispatchMouseEvent", %*{"type": "mouseMoved", "x": 300, "y": 400})
+  discard browser.call("Input.dispatchKeyEvent", %*{"type": "keyDown", "key": "ArrowRight", "code": "ArrowRight", "windowsVirtualKeyCode": 39})
+  sleep(250)
+  discard browser.call("Input.dispatchKeyEvent", %*{"type": "keyUp", "key": "ArrowRight", "code": "ArrowRight", "windowsVirtualKeyCode": 39})
+  sleep(250)
+  require(not browser.evaluate("Module.replayAuto").getBool, "3D pan did not enter Manual")
   let path = getHomeDir() / ".local/share/screeps-pw/viewer-verified.png"
   var visible = 0
   for pixel in resized.data:

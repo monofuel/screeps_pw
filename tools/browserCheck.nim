@@ -16,7 +16,10 @@ proc main() =
     run(@["nix", "develop", "path:" & Root, "--command", "env", "SCREEPS_PW_BROWSER_TOOLCHAIN=1",
       getAppFilename()] & commandLineParams())
     return
-  rules.require(paramCount() == 1 and fileExists(paramStr(1)), "Usage: browserCheck MATCH_REPLAY")
+  rules.require(paramCount() in 1..2 and fileExists(paramStr(1)), "Usage: browserCheck MATCH_REPLAY [--director]")
+  if paramCount() == 2:
+    rules.require(paramStr(2) == "--director", "Expected --director")
+    putEnv("SCREEPS_PW_DIRECTOR_CHECK", "1")
   putEnv("SCREEPS_PW_REPLAY_TICKS", $openReplay(readFile(paramStr(1))).lastTick)
   putEnv("SCREEPS_PW_REPLAY_FILE", absolutePath(paramStr(1)))
   available(8769)

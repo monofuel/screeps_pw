@@ -6,7 +6,7 @@ import
 proc main() =
   ## Stage the native image, verified file players, and generated viewer hook.
   require(paramCount() <= 2, "Usage: package [MAJOR.MINOR.PATCH [EXISTING_GAME_IMAGE]]")
-  let version = if paramCount() >= 1: paramStr(1) else: "0.1.3"
+  let version = if paramCount() >= 1: paramStr(1) else: "0.1.4"
   let parts = version.split('.')
   require(parts.len == 3, "Version must contain major, minor and patch")
   for part in parts:

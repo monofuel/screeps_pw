@@ -167,6 +167,20 @@ In the 3D pane, pan with arrow keys or the middle mouse button and zoom with
 the wheel. Arrow keys over the map pan that view instead. The full-width bottom
 bar controls play, pause, stepping, seeking, looping and speed.
 
+Auto starts in the first player's recorded starting room. It holds each room
+for at least 30 seconds of visible, playing time, then cuts instantly to a
+whole-room view. Recent combat takes priority over controller upgrades, ownership
+changes and building completion or destruction. During quiet play it tours
+rooms with player creeps or active spawning, choosing the least recently shown
+room. Events stay relevant for 10 seconds of viewing time; idle buildings alone
+do not attract the camera. Playback speed does not shorten these holds.
+
+Clicking a room or the 3D scene, inspecting an object, or panning or zooming the
+3D camera switches to Manual. Press Manual beside the room heading to resume
+Auto from the current room with a fresh 30-second hold. Map pan/zoom and divider
+resizing preserve the mode. Pause and hidden tabs freeze Auto; seeking and replay
+loops clear recent events and restart the hold without changing rooms.
+
 The replay records the shared authoritative world once, including tick 0 and
 every completed tick. Static terrain is stored once. Independently compressed
 100-tick chunks begin with full keyframes and continue with entity upserts and
@@ -184,6 +198,10 @@ It verifies visible geometry, normal/default playback clocks, pause, stepping,
 timeline seeking, terrain detail, linked room selection, map pan/zoom and input
 isolation, divider resizing, window resizing, and visible missing-replay errors.
 Screenshots and browser profiles stay under `~/.local/share/screeps-pw/`.
+
+For real-time Auto hold, tour and manual takeover checks, use
+`make director-browser-test REPLAY=PATH` with a full 6,000-tick 4×4 replay
+containing two active colonies. This takes about two minutes.
 
 The league's episode page opens the hosted 3D viewer. The CLI can print its
 viewer link without launching a desktop browser:
@@ -206,13 +224,15 @@ make certify
 ```
 
 Set `VERSION` for later immutable releases, for example
-`make package VERSION=0.1.3`.
+`make package VERSION=0.1.4`.
 
 Run `make deps` and `make engine` first. Packaging rebuilds the adapter on top
 of the pinned public engine runtime. Building and certifying locally do not
 publish a release or change the running league.
 
 For a viewer-only package, pass `GAME_IMAGE` to reuse an existing game image.
+For example, `make package VERSION=0.1.4 GAME_IMAGE=screeps-pw:0.1.3` updates
+the viewer while preserving the certified 0.1.3 simulation image.
 
 Packaging uses public `coworld[auth]==0.1.56` through an isolated uv environment.
 `nim r tools/sdk.nim ...` wraps the same CLI. Maintainers may explicitly set

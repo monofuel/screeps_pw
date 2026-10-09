@@ -261,3 +261,36 @@ Hosted smoke `ereq_307d763f-cff1-44af-882a-66634e2b528d` decodes to 600 ticks,
 `~/.local/share/screeps-pw/centered-upload.log`. A new round was requested after
 verifying the canonical pointer; its acknowledgement is
 `~/.local/share/screeps-pw/centered-trigger-round.json`.
+
+## Automatic room viewing — 0.1.4
+
+Auto uses visible playing time, with a strict 30-second room hold and instant
+cuts to the fixed whole-room framing. Recent combat outranks controller and
+building changes; quiet rooms with player creeps or spawning are toured in
+least-recently-shown order. Manual room selection and 3D interaction disable
+Auto until resumed. Seeks and loops clear event history and restart the hold;
+pause, hidden tabs, map pan/zoom, and divider controls retain their documented
+behavior. Replay data and simulation rules are unchanged.
+
+All 19 unit checks pass, including nine director scenarios. Native checks and
+the WASM build pass. Headless Chromium checks the full centered 6,000-tick
+colony-versus-colony replay: the hold also applies at 20x playback, Auto cuts
+update the map outline and framing, Manual remains active beyond 30 seconds,
+and resuming Auto starts a fresh hold. Room clicks, scene clicks, 3D pan/zoom,
+map controls, divider resize, transport, canvas resize and missing-file errors
+are also checked.
+
+```sh
+make test
+nim check src/replayDirector.nim
+nix develop . --command nim check viewer/viewer.nim
+make package VERSION=0.1.4 GAME_IMAGE=screeps-pw:0.1.3
+make director-browser-test REPLAY=~/.local/share/screeps-pw/centered-duels/20261009T022042Z-0jlmmsw8/match.replay
+make certify
+```
+
+The package reuses game image
+`sha256:86729e7028aa18147cf2338ac9be8eea3737ce7847593019045711919af1dc04`.
+The baseline and both adapter module hashes match 0.1.3. Local executable
+certification passes all ten steps; artifacts are at
+`~/.local/share/screeps-pw/certification/tmp/coworld-cert-asc5teut/`.

@@ -2,7 +2,7 @@ import
   std/[json, math, os, strformat, strutils, tables],
   bumpy, chroma, opengl, silky, vmath, windy,
   polyworld/[chrome, gameuis, inputs, rtscameras, viewers],
-  replays, rules,
+  replayDirector, replays, rules,
   ./[sceneShapes, worldmap]
 
 when defined(emscripten):
@@ -21,6 +21,8 @@ var
   sk: Silky
   renderer: ShapeRenderer
   room = ""
+  director: ReplayDirector
+  seeking = false
   selected = ""
   terrain: Table[string, string]
   world: WorldMap
@@ -108,11 +110,15 @@ proc updateInput(dt: float32) =
         let name = world.roomAt(pointer, panel)
         if name.len > 0:
           room = name
+          director.manual(room)
           selected = ""
           cameraTarget = vec3(0)
       mapDragging = false
   let viewport = roomViewport()
   if viewport.contains(pointer):
+    if window.scrollDelta.y != 0 or rtsPanDir(window) != vec2(0) or
+        window.mouseDown(MouseMiddle) or window.mousePressed(MouseLeft):
+      director.manual(room)
     cameraDistance = clamp(cameraDistance - window.scrollDelta.y * wheelScale * 3, 12, 120)
     discard applyRtsPan(cameraTarget, rtsPanDir(window), dt, cameraDistance, 25)
     if window.mouseDown(MouseMiddle):
@@ -264,7 +270,10 @@ proc drawHud() =
     let name = replay.header["metadata"]["config"]["players"][slot]["name"].getStr
     label(name & "  " & formatFloat(state.scores[slot].getFloat, ffDecimal, 0).strip(chars = {'.'}) & " GCL points",
       vec2(14 + slot.float32 * w / 2, 36), if slot == 0: Blue else: Red, w / 2 - 28)
-  label(room, vec2(14, 80), width = divider() - 28)
+  label(room, vec2(14, 80), width = divider() - 122)
+  if button((if director.automatic: "Auto" else: "Manual"), vec2(divider() - 94, 76), 80):
+    if director.automatic: director.manual(room)
+    else: director.resume()
   drawWorld()
   sk.drawRect(vec2(divider() - 1, 68), vec2(2, h - transportHeight() - 68), PanelAccent)
   sk.drawRect(vec2(divider() - 2, (68 + h - transportHeight()) / 2 - 20),
@@ -285,6 +294,9 @@ proc drawHud() =
   var x = 12.0'f32
   for index, text in ["|<", "<", (if playing: "Pause" else: "Play"), ">", ">|", (if repeating: "Loop" else: "Once")]:
     if button(text, bar + vec2(x, 8)):
+      if index in [0, 1, 3, 4]:
+        seeking = true
+        director.resetHistory()
       case index
       of 0: position = 0
       of 1: playing = false; position = max(floor(position) - 1, 0)
@@ -303,6 +315,8 @@ proc drawHud() =
   sk.drawRect(track.origin, track.size, rgbx(53, 63, 79, 255))
   sk.drawRect(track.origin, vec2(track.size.x * position.float32 / replay.lastTick.float32, 20), Blue)
   if window.mouseDown(MouseLeft) and track.contains(sk.mousePos):
+    seeking = true
+    director.resetHistory()
     position = clamp((sk.mousePos.x - track.origin.x) / track.size.x, 0, 1).float * replay.lastTick.float
   sk.endUi()
 
@@ -314,6 +328,9 @@ proc main() =
   require(path.len > 0, "Expected --replay FILE")
   replay = openReplay(readFile(path))
   room = replay.startingRoom()
+  var players: seq[string]
+  for account in replay.header["metadata"]["accounts"]: players.add(account["user"].getStr)
+  director = initReplayDirector(room, players)
   when defined(emscripten):
     {.emit: """
     `wheelScale` = EM_ASM_DOUBLE({ return navigator.platform.includes('Mac') ? 0.01 : -0.05; });
@@ -330,15 +347,23 @@ proc main() =
   window.onFrame = proc() =
     let dt = clock.viewingDelta(window)
     if window.buttonPressed[KeySpace]: playing = not playing
+    director.advance(dt.float, playing)
     if playing:
       position += dt.float * Speeds[speedIndex]
       if position > replay.lastTick.float:
-        if repeating: position = position mod replay.lastTick.float
+        if repeating:
+          position = position mod replay.lastTick.float
+          director.resetHistory()
+          seeking = true
         else: position = replay.lastTick.float; playing = false
     let tick = floor(position).int
     if state.scores.isNil or state.tick != tick:
+      if not state.scores.isNil and not seeking and tick > state.tick:
+        for observed in state.tick + 1..<tick: director.observe(replay.stateAt(observed))
       state = replay.stateAt(tick)
       nextState = replay.stateAt(min(tick + 1, replay.lastTick))
+    director.observe(state)
+    seeking = false
     updateInput(dt)
     drawRoom()
     let viewport = roomViewport()
@@ -353,6 +378,24 @@ proc main() =
     drawHud()
     window.swapBuffers()
     reportReplayFrame(state.tick.int32, 0)
+    when defined(emscripten):
+      let
+        roomName = room.cstring
+        automatic = director.automatic
+        inspected = selected.cstring
+      {.emit: """
+      EM_ASM({
+        Module.replayRoom = UTF8ToString($0);
+        Module.replayAuto = !!$1;
+        Module.replayCameraDistance = $2;
+        Module.replaySelection = UTF8ToString($3);
+      }, `roomName`, `automatic`, `cameraDistance`, `inspected`);
+      """.}
+    if not window.mouseDown(MouseLeft) and not window.mouseDown(MouseMiddle) and director.choose(playing, dt > 0):
+      room = director.room
+      selected = ""
+      cameraTarget = vec3(0)
+      cameraDistance = 90
   while not window.closeRequested:
     pollEvents()
     waitForDisplay()
