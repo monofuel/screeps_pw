@@ -441,3 +441,32 @@ make package VERSION=0.1.6
 nim r tests/test_uploadStaging.nim
 make certify
 ```
+
+Source commit `c629c08aa5efaef747fe534f176aa9e9a47ed249` is pushed to GitHub.
+Public 0.1.6 is `cow_9af43600-fbb5-4394-9a72-506b12f39f1e`, manifest hash
+`sha256:ddc44ce1a343a73bd3738eea266ac2f7da736bb51ba60df641e2bf420aab0310`.
+The rebuilt hosted image is
+`public.ecr.aws/q5f4m8t9/cogames@sha256:2974512cc1bb7f6bc6722145905db4d535ea0e69fe6e5c16560d071cba68ab52`.
+All ten hosted certification steps and five upload smoke episodes pass. These
+hosted upload smokes use the first bundled policy in both seats, so separate
+WASM evidence is required. Both existing game pointers resolve to 0.1.6; the
+league response is otherwise unchanged. The upload transcript is
+`~/.local/share/screeps-pw/zip-upload.log`.
+
+The public purpose-built package is uploaded as `screeps-pw-wasm-example:v1`
+for isolated integration, without submitting it to the league. Experience
+request `xreq_25a22faa-5cc6-4e76-9134-98d492e2fd4f` creates one 600-tick episode
+on the immutable 0.1.6 release, with that package in both seats. Episode
+`ereq_bfa1a662-a494-4b53-be86-12dc06e5db8e` completes without an infrastructure
+error. Its recorded policy hashes match the example ZIP and both accounts own
+a Zip13 creep by tick 6, proving remote execution of WASM, the JS helper and
+the exact binary data. The replay is
+`~/.local/share/screeps-pw/zip-hosted.replay`; the compact decoded evidence is
+`~/.local/share/screeps-pw/zip-hosted-check.json`.
+
+The actual hosted viewer passes browser interactions against this WASM replay;
+artifacts are at `~/.local/share/screeps-pw/browser/check-Yz6z9FYx/`.
+A fresh round is requested on the existing league; its acknowledgement is
+`~/.local/share/screeps-pw/zip-trigger-round.json`. Existing entrants, standings
+and historical replays are retained. Shared active-player credentials are not
+changed by uploads, which use an isolated credential copy.
