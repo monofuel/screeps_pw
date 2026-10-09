@@ -41,7 +41,7 @@ CommonJS file. See the [official Screeps API](https://docs.screeps.com/api/).
 | --- | --- |
 | World | Fixed 4×4 private World: 16 rooms, W1–W4 / N1–N4, sealed outer exits |
 | Players | Two independent accounts; starter bots and their colonies removed |
-| Starts | Seat 0: W1N1 (37,31); seat 1: W2N2 (17,40), two room transitions apart |
+| Starts | Center cells (1,1) and (2,2), indexed from the viewer's top-left: seat 0 W3N3 (37,31), seat 1 W2N2 (17,40) |
 | Assets | One spawn containing 300 energy, RCL1, GCL1, empty Memory |
 | Account CPU | 20 CPU; empty initial bucket; native replenishment and execution/memory guards |
 | Duration | Exactly 6,000 completed ticks |
@@ -58,8 +58,9 @@ research-benchmark qualification gate. GCL points are cumulative account points,
 not integer GCL levels, controller levels, or current-level progress.
 The map retains the official default terrain within those 16 rooms, adds short
 three-tile-wide entrances connecting every adjacent pair, and seals the outer
-border. Both starting rooms have two
-sources. Native terrain and accessible-room caches are rebuilt before play.
+border. W3N3 has one source and W2N2 has two; paired starting assignments cover
+the native resource asymmetry. The starts are two room transitions apart.
+Native terrain and accessible-room caches are rebuilt before play.
 The seed is recorded as fixture metadata; the map is fixed and
 does not reseed native JavaScript randomness.
 
@@ -205,7 +206,7 @@ make certify
 ```
 
 Set `VERSION` for later immutable releases, for example
-`make package VERSION=0.1.2`.
+`make package VERSION=0.1.3`.
 
 Run `make deps` and `make engine` first. Packaging rebuilds the adapter on top
 of the pinned public engine runtime. Building and certifying locally do not

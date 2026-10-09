@@ -20,7 +20,7 @@ var
   window: Window
   sk: Silky
   renderer: ShapeRenderer
-  room = "W1N1"
+  room = ""
   selected = ""
   terrain: Table[string, string]
   world: WorldMap
@@ -313,6 +313,7 @@ proc main() =
     if paramStr(index) == "--replay" and index < paramCount(): path = paramStr(index + 1)
   require(path.len > 0, "Expected --replay FILE")
   replay = openReplay(readFile(path))
+  room = replay.startingRoom()
   when defined(emscripten):
     {.emit: """
     `wheelScale` = EM_ASM_DOUBLE({ return navigator.platform.includes('Mac') ? 0.01 : -0.05; });

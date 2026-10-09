@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := build
 NIM ?= nim
-VERSION ?= 0.1.2
+VERSION ?= 0.1.3
 GAME_IMAGE ?=
 
 .PHONY: deps engine build test integration viewer browser-test package certify check

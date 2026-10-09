@@ -26,6 +26,20 @@ suite "Recorded-state playback":
     check last.objects.len == 1
     check last.objects["creep"]["x"].getInt == 2
     check replay.stateAt(0).objects.len == 2
+  test "Starting rooms follow recorded ownership, including older matches":
+    let header = %*{"version": 1, "results": {"ticks": 1},
+      "metadata": {"accounts": [{"user": "blue"}, {"user": "red"}]}}
+    let frames = %*[
+      {"tick": 0, "keyframe": true, "scores": [0,0], "upsert": [
+        {"_id": "red-spawn", "type": "spawn", "user": "red", "room": "W9N9"},
+        {"_id": "blue-creep", "type": "creep", "user": "blue", "room": "W3N3"},
+        {"_id": "blue-spawn", "type": "spawn", "user": "blue", "room": "W1N1"}], "remove": []},
+      {"tick": 1, "keyframe": false, "scores": [0,0], "upsert": [],
+        "remove": ["blue-spawn"]}]
+    var replay = openReplay(encoded(header, frames))
+    discard replay.stateAt(1)
+    check replay.startingRoom(0) == "W1N1"
+    check replay.startingRoom(1) == "W9N9"
   test "Truncated files and unsupported versions fail visibly":
     expect ValueError: discard openReplay("SCR1")
     let header = %*{"version": 2, "results": {"ticks": 1}}

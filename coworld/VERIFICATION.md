@@ -229,3 +229,35 @@ scores `[290,0]`, matching the existing certification control. Its artifacts are
 The browser checks pass against the previous full 4×4 competition replay;
 the resulting image is included at `docs/viewer.png`.
 This preparation does not upload a new Coworld or change the hosted league.
+
+## Centered starts correction — 0.1.3
+
+The starts now occupy zero-based viewer cells `(1,1)` and `(2,2)`: W3N3
+`(37,31)` and W2N2 `(17,40)`. The native terrain and 4×4 room set are retained.
+W3N3 has one native source and W2N2 has two; paired starting assignments retain
+both seat evaluations. The viewer opens the first seat's recorded starting
+spawn, so older replays continue to open their original starting room.
+
+All ten unit checks and eight disposable-engine checks pass. Native integration
+checks actual account-owned spawns against the two central cells and verifies
+travel between them. Both 300-tick and full 6,000-tick replays pass the browser
+checks. The full colony-versus-colony match scores `[2978,10031]` in 155.724
+seconds, with no policy/runtime errors. Artifacts are at
+`~/.local/share/screeps-pw/centered-duels/20261009T022042Z-0jlmmsw8/`.
+The current screenshot is `docs/viewer.png`.
+
+The rebuilt game image is
+`sha256:86729e7028aa18147cf2338ac9be8eea3737ce7847593019045711919af1dc04`.
+Local executable certification passes all ten steps, with artifacts at
+`~/.local/share/screeps-pw/certification/tmp/coworld-cert-cf96jvn5/`.
+
+Softmax passes all ten hosted certification steps and five upload smoke
+episodes. Public 0.1.3 is `cow_37c46e16-5caa-46df-8dd0-badceb64cf64`, manifest
+hash `sha256:6861fb500fedc2d1fffa51de3d7e2fda8e2a21b4d464b9e5677513a7094543da`.
+The existing league's game and canonical pointers both resolve to this package.
+Hosted smoke `ereq_307d763f-cff1-44af-882a-66634e2b528d` decodes to 600 ticks,
+16 rooms and starting rooms `[W3N3,W2N2]`. Its downloaded replay is
+`~/.local/share/screeps-pw/centered-hosted.replay`; the upload transcript is
+`~/.local/share/screeps-pw/centered-upload.log`. A new round was requested after
+verifying the canonical pointer; its acknowledgement is
+`~/.local/share/screeps-pw/centered-trigger-round.json`.

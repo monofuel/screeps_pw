@@ -9,6 +9,7 @@ proc main() =
   let first = replay.stateAt(0)
   let last = replay.stateAt(replay.lastTick)
   echo $(%*{"ticks": replay.lastTick, "rooms": replay.header["terrain"].len,
+    "startingRooms": [replay.startingRoom(0), replay.startingRoom(1)],
     "initialObjects": first.objects.len,
     "terminalObjects": last.objects.len, "scores": last.scores,
     "chunks": replay.header["chunks"].len})

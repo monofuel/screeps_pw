@@ -10,13 +10,13 @@ var
 proc roomPosition(x, y: int, room: cstring): JsObject {.importjs: "new RoomPosition(#, #, #)".}
 
 proc loop() =
-  let exits = game.map.describeExits(cstring(StartRooms[0]))
+  let exits = game.map.describeExits("W1N1".cstring)
   doAssert exits["3"].isNil and exits["5"].isNil
   doAssert exits["1"].to(cstring) == "W1N2".cstring
   doAssert exits["7"].to(cstring) == "W2N1".cstring
   let route = game.map.findRoute(cstring(StartRooms[0]), cstring(StartRooms[1]))
   doAssert route.length.to(int) == 2
-  let terrain = game.map.getRoomTerrain(cstring(StartRooms[0]))
+  let terrain = game.map.getRoomTerrain("W1N1".cstring)
   for tile in 0..<50:
     doAssert terrain.get(49, tile).to(int) == 1
     doAssert terrain.get(tile, 49).to(int) == 1

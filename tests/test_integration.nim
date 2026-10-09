@@ -47,16 +47,32 @@ suite "Disposable official World":
         check entity["store"]["energy"].getInt == 300
         check entity["room"].getStr in StartRooms
     check spawns == 2
+    var startingCells: seq[(int, int)]
     for user in initial["users"]:
       if user.getOrDefault("username").getStr in ["Seat0", "Seat1"]:
         check user["cpu"].getInt == 20
         check user["cpuAvailable"].getInt == 0
         check not user.hasKey("bot")
+        let slot = parseInt(user["username"].getStr[4..^1])
+        var accountSpawns = 0
+        for entity in initial["objects"]:
+          if entity["type"].getStr != "spawn" or entity["user"] != user["_id"]: continue
+          inc accountSpawns
+          let room = entity["room"].getStr
+          let cell = (4 - parseInt(room[1..1]), 4 - parseInt(room[3..3]))
+          check cell == [(1, 1), (2, 2)][slot]
+          check entity["x"].getInt == StartPositions[slot][0]
+          check entity["y"].getInt == StartPositions[slot][1]
+          startingCells.add cell
+        check accountSpawns == 1
+    check startingCells.len == 2
     var replay = openReplay(readFile(directory / "match.replay"))
     check not replay.header["metadata"]["config"].hasKey("tokens")
     for tick in [0, 1, 99, 100, 101, 3]:
       check replay.stateAt(tick).tick == tick
     let start = replay.stateAt(0)
+    check replay.startingRoom(0) == "W3N3"
+    check replay.startingRoom(1) == "W2N2"
     check start.objects.len == initial["objects"].len
     for entity in initial["objects"]:
       check start.objects.hasKey(entity["_id"].getStr)

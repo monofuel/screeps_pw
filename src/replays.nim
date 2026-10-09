@@ -81,3 +81,13 @@ proc stateAt*(replay: var Replay, tick: int): ReplayState =
     result.tick = frame["tick"].getInt
     result.scores = frame["scores"]
   require(result.tick == tick, "Missing replay tick")
+
+proc startingRoom*(replay: var Replay, slot = 0): string =
+  ## Find the recorded starting spawn rather than assuming current game rules.
+  require(slot in 0..1, "Invalid replay seat")
+  let account = replay.header["metadata"]["accounts"][slot]["user"].getStr
+  for id, entity in replay.stateAt(0).objects:
+    if entity.getOrDefault("type").getStr == "spawn" and
+        entity.getOrDefault("user").getStr == account:
+      return entity["room"].getStr
+  raise newException(ValueError, "Replay seat has no starting spawn")

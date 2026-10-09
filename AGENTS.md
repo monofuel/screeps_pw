@@ -15,6 +15,8 @@ package. It is separate from our playing bots and bot-research dashboard.
   3D Polyworld viewing, packaging, certification, and initial hosted operation.
 - Keep the MVP simple: one fixed 4×4 world. Do not add configurable map generation
   or broader game modes unless requested.
+- Start the players at zero-based viewer cells (1,1) and (2,2), the central
+  diagonal rooms W3N3 and W2N2. Do not move the starts to an outer corner.
 - Preserve existing user work. Commit, push, deploy, upload a Coworld release,
   or create/enable a hosted league only when requested.
 

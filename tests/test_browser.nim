@@ -55,8 +55,13 @@ proc main() =
   ## Verify visible drawing, clocks, transport, rooms, resize, and bad input.
   var browser = connectBrowser()
   let horizon = parseInt(getEnv("SCREEPS_PW_REPLAY_TICKS", "6000"))
-  let compact = openReplay(readFile(getEnv("SCREEPS_PW_REPLAY_FILE"))).header["terrain"].len == 16
-  let initialBox = if compact: (1110, 555, 138, 138) else: (1145, 590, 60, 60)
+  var replay = openReplay(readFile(getEnv("SCREEPS_PW_REPLAY_FILE")))
+  let compact = replay.header["terrain"].len == 16
+  let startingRoom = replay.startingRoom()
+  let initialBox = if compact:
+      (669 + (4 - parseInt(startingRoom[1..1])) * 147,
+        114 + (4 - parseInt(startingRoom[3..3])) * 147, 138, 138)
+    else: (1145, 590, 60, 60)
   let targetBox = if compact: (964, 409, 138, 138) else: (720, 165, 60, 60)
   defer: browser.close()
   discard browser.call("Emulation.setDeviceMetricsOverride", %*{
