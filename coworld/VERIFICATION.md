@@ -470,3 +470,62 @@ A fresh round is requested on the existing league; its acknowledgement is
 `~/.local/share/screeps-pw/zip-trigger-round.json`. Existing entrants, standings
 and historical replays are retained. Shared active-player credentials are not
 changed by uploads, which use an isolated credential copy.
+
+## 1,500-tick horizon — 0.1.7
+
+The competition variant runs 1,500 ticks; nothing else changed. `make test`,
+`make check`, `make integration` (10/10), five packaged staging checks and
+local certification (10/10) pass. Public 0.1.7 is
+`cow_6696737b-78a9-49d1-917c-fb988f09b7db`, manifest hash
+`sha256:21235361b3ec7f021ab537d1ea2f3d5f87efc0206cde12126e1add65b8ea811c`;
+hosted certification passes all ten steps. Hosted rounds 45 and 46 complete all
+twelve episodes; the median episode runs 43 s and a round takes about 2 m 15 s,
+against 5–9 minutes for 6,000-tick rounds. Transcripts are
+`~/.local/share/screeps-pw/horizon1500-*.log`.
+
+## Faster engine turns and fixed tick count — 0.1.8
+
+Opt-in `PW_TIMING=1` stage timing located the per-tick cost. Replay recording
+moved from Nim JSON conversions to native objects (about 6 ms to 0.55 ms per
+baseline tick), the official processor no longer waits on Node's 1 ms
+`setTimeout(loop, 0)` floor between rooms, and both seats run on two runner
+threads. Run results are tagged with their account so private logs stay with
+their seat, and runs after the first wait for it because the official
+`accessibleRooms` cache returns undefined to a run that starts during its first
+fetch. The privacy integration check now throws from each seat in turn.
+`max_ticks` is removed from the config schema, variants, certification and the
+local runner; every match runs `MatchTicks` (1,500) ticks.
+
+Equivalence uses `nim r tools/replayDiff.nim A.replay B.replay`, which compares every tick's public
+objects after replacing random object and account ids. The previous runtime
+reproduces itself exactly, and the new runtime is identical to it over all
+1,501 states for baseline self-play, the navigation fixture against idle, and
+WASM self-play. Locally, 3-run means for 1,500 ticks move from 13.4 s to 6.9 s
+idle and 35.1 s to 22.7 s baseline when three matches share the host. The
+viewer passes standard and director browser checks on new 1,500-tick replays
+and still opens 600- and 6,000-tick replays.
+
+Public 0.1.8 is `cow_b493daae-4596-4642-8b0d-9f36192a4306`, manifest hash
+`sha256:69d5a4d07bdb73ba82b4ec92bde0ad9447bb8bd677187a21d594b75be89a9910`,
+source commit `06230e6`. Hosted certification passes all ten steps. Hosted
+round 47 completes all twelve episodes without errors; the median episode
+runs 22 s (max 25 s) and the round takes 1 m 34 s. Episode configs carry no
+`max_ticks`. Transcripts are `~/.local/share/screeps-pw/speed-*.log`.
+
+## Single engine process — 0.1.9
+
+The launcher starts one engine process that loads the official storage,
+runner, processor and main modules. Storage calls invoke the official storage
+methods directly with the JSON copies and asynchronous replies of the RPC
+client. Normalized replays remain identical to 0.1.8 for the same three
+matches; only bucket values in bot console output differ. Run one at a time on
+the local host, 1,500-tick means move from 5.03 s to 4.96 s idle and 19.1 s to
+17.4 s baseline, and peak match memory falls from 486 MiB to 327 MiB with three
+container processes instead of six.
+
+`make test`, `make check`, `make integration` (10/10), the director browser
+check, five packaged staging checks and local certification (10/10) pass.
+Public 0.1.9 is `cow_752982d2-d3bd-47d1-8dd3-f4be5bc11bc3`, manifest hash
+`sha256:5262a136773c2579d12d97abc37289ba6d56a498b9b871ba266c6ce862ac672e`,
+source commit `6dc9bf5`. Hosted certification passes all ten steps.
+Transcripts are `~/.local/share/screeps-pw/single-*.log`.
