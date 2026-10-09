@@ -294,3 +294,20 @@ The package reuses game image
 The baseline and both adapter module hashes match 0.1.3. Local executable
 certification passes all ten steps; artifacts are at
 `~/.local/share/screeps-pw/certification/tmp/coworld-cert-asc5teut/`.
+
+The final local browser run is at
+`~/.local/share/screeps-pw/browser/check-uVEr8aDf/`.
+Public 0.1.4 is `cow_5716632f-dfaf-4019-ac24-eb1485b039e0`, manifest hash
+`sha256:2f4386a4385f89ad81883dd6c1b099f5c1b213588b9e14b8eb4f0b0bd3efd43c`.
+Softmax passes all ten hosted certification steps and five upload smoke episodes.
+Both the existing game's current and canonical pointers resolve to 0.1.4;
+league settings are unchanged. Both 0.1.3 and 0.1.4 use the same hosted game
+image, `public.ecr.aws/q5f4m8t9/cogames@sha256:f09d989a0e4cf33ce548db817208f15ad2d4ae19bf7fc11874c59960ba7c5247`.
+
+The actual hosted viewer passes the browser interaction checks against smoke
+`ereq_5e0e8061-c040-4fdb-9411-351d1824dc6e`. Its replay decodes to 600 ticks,
+16 rooms, starting rooms `[W3N3,W2N2]` and scores `[16,0]`; the file is
+`~/.local/share/screeps-pw/auto-view-hosted.replay`.
+The upload transcript is `~/.local/share/screeps-pw/auto-view-upload.log`, and
+the requested fresh round's acknowledgement is
+`~/.local/share/screeps-pw/auto-view-trigger-round.json`.
