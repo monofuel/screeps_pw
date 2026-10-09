@@ -115,6 +115,26 @@ suite "Disposable official World":
     let directory = runMatch([path, Root / "build/players/idle.js"], 3)
     check parseFile(directory / "results.json")["ticks"].getInt == 3
     check "Error" notin readFile(directory / "private/seat-0.log")
+  test "ZIP modules, WASM and binary data drive actions in either seat":
+    for policies in [[Root / "build/players/wasm.zip", Root / "build/players/idle.js"],
+        [Root / "build/players/idle.js", Root / "build/players/wasm.zip"],
+        [Root / "build/players/wasm.zip", Root / "build/players/wasm.zip"]]:
+      let directory = runMatch(policies, 6)
+      check parseFile(directory / "results.json")["ticks"].getInt == 6
+      var replay = openReplay(readFile(directory / "match.replay"))
+      let state = replay.stateAt(6)
+      for slot in 0..1:
+        if not policies[slot].endsWith(".zip"): continue
+        let log = readFile(directory / "private/seat-" & $slot & ".log")
+        check "ZIP_WASM_OK 13" in log
+        check "Error" notin log
+        let account = replay.header["metadata"]["accounts"][slot]["user"]
+        var found = false
+        for entity in state.objects.values:
+          if entity["type"].getStr == "creep" and entity["user"] == account:
+            check entity["name"].getStr == "Zip13"
+            found = true
+        check found
   test "Policy errors stay private and never terminate native gameplay":
     run(["nim", "js", "tests/fixtures/throwing.nim"])
     let directory = runMatch([Root / "build/fixtures/throwing.js", Root / "build/players/idle.js"], 30)

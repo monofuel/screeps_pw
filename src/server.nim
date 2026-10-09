@@ -1,7 +1,7 @@
 import
   std/[atomics, json, os, osproc, streams, strutils, uri],
   mummy,
-  rules
+  policyUpload, rules
 
 var phase: Atomic[int]
 
@@ -34,12 +34,16 @@ proc prepareEpisode() =
   for slot in 0..1:
     let seat = seats["seats"][slot]
     let policy = filePath(seat["file_uri"].getStr)
-    if not fileExists(policy) or not validPolicySize(getFileSize(policy)):
+    try:
+      if not fileExists(policy): raise newException(PolicyError, "Player file is missing")
+      validatePolicyUpload(policy)
+    except PolicyError as error:
       publish(filePath(getEnv("COGAME_PLAYER_FAILURE_URI")), %*{
-        "failed_policy_index": slot, "message": PolicySizeMessage})
+        "failed_policy_index": slot, "message": error.msg})
       raise newException(ValueError, "Invalid player file")
     createDir("/episode/input/seat" & $slot)
-    copyFile(policy, "/episode/input/seat" & $slot / "main.js")
+    copyFile(policy, "/episode/input/seat" & $slot / "policy")
+    writeFile("/episode/input/seat" & $slot / "main.js", "")
   writeFile("/episode/config.json", $config)
   writeFile("/episode/seats.json", $seats)
   writeFile("/episode/mods.json", $(%*{"mods": ["/app/runtime/control.js"],

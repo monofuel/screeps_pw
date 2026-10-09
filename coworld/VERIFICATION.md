@@ -392,3 +392,52 @@ Publication uses an isolated copy of the existing user credential, preserving
 the shared active-player selection. A fresh round is requested on the existing
 league; the platform acknowledgement is
 `~/.local/share/screeps-pw/fair-trigger-round.json`.
+
+## ZIP/WASM submissions — 0.1.6
+
+Single-file JavaScript retains its inclusive 5 MiB limit. ZIP32 packages accept
+up to 256 flat files, 16 MiB total expanded contents and 17 MiB archive bytes.
+Both runners retain the original artifact and hash, then use the same trusted
+Nim-generated runtime to validate and normalize modules before the first turn.
+Deflate allocation is bounded by the declared entry size, with actual lengths,
+checksums and consumed input verified. Unsafe names, module collisions,
+unsupported formats and overlapping records are participant failures; hosted
+failures preserve the correct seat and do not publish normal results.
+
+The independent WASM example combines an addition function, a separate
+JavaScript helper and exact binary bytes into the game action spawning Zip13.
+No newer private bot code is copied. The existing public colony source is
+unchanged and its compiled hash remains
+`e802d48f0277ca04d47f744e6fe099ec708afbdccbe0684f4bc76e679295f54f`.
+The example ZIP hash is
+`56de0a211646cc53285a6ea00a19ec0b7aa29c0dd1b31fae0d150a721e5a4ba6`.
+
+All 28 unit checks, ten disposable-engine checks and five packaged staging
+checks pass. Coverage includes stored/Deflate/data-descriptor packages,
+extensionless staging, exact JavaScript and expanded package limits, dishonest
+expansion metadata, CRC corruption, invalid paths and seat attribution. Actual
+WASM-driven creeps appear in either seat separately and both seats together;
+existing runtime guards, private errors and cancellation checks still pass.
+Native checks, generated JS and the WASM viewer build pass.
+
+Local certification passes all ten steps, exercising the frozen colony and
+the new WASM package for 600 ticks. Certification requires every declared
+example to run in its two-seat fixture, so this release declares those two
+examples; idle remains a local example and prior league submissions are retained.
+Artifacts are at
+`~/.local/share/screeps-pw/certification/tmp/coworld-cert-mli66uib/`.
+The rebuilt local image is
+`sha256:ea0dda4633029c8609df22f2683602bf986e879829a6651dbb38007cfff298b7`.
+Launcher and control hashes are
+`9ac1d8fa3473a20987d78389b9bf739f8ce7a121d22899a1da6fec9695aee7a6`
+and `be42ed1e25a2e2de493f3c2ea5f7e508348b5aa3a66a19740834f933b65724a0`.
+
+```sh
+make test
+make check
+make integration
+make upload-integration VERSION=0.1.6
+make package VERSION=0.1.6
+nim r tests/test_uploadStaging.nim
+make certify
+```

@@ -1,7 +1,7 @@
 import
   std/[asyncjs, jsffi, json],
   nodeBridge,
-  rules, worldFixture
+  policies, rules, worldFixture
 
 const
   TemplatePath = "/opt/screeps/node_modules/@screeps/launcher/init_dist/db.json"
@@ -9,6 +9,7 @@ const
 
 var
   children: seq[JsObject]
+  modules: array[2, JsonNode]
   stopping = false
 
 proc exitProcess(code: int) {.importjs: "process.exit(#)".} =
@@ -95,6 +96,9 @@ proc prepare(config: JsonNode): Future[void] {.async.} =
       toJs(%*{"username": username, "cpu": 20, "gcl": 1,
         "x": StartPositions[slot][0], "y": StartPositions[slot][1]})).to(Future[JsObject])
     let account = toJson(await find("users", toJs(%*{"username": username})))[0]
+    let stored = require("@screeps/backend/lib/utils").translateModulesToDb(toJs(modules[slot]))
+    discard await update("users.code", toJs(%*{"user": account["_id"], "activeWorld": true}),
+      toJs(%*{"$set": {"modules": toJson(stored)}}))
     discard await update("users", toJs(%*{"_id": account["_id"]}),
       toJs(%*{"$set": {"cpuAvailable": 0}, "$unset": {"bot": true}}))
     discard await update("rooms.objects", toJs(%*{"user": account["_id"], "type": "spawn"}),
@@ -118,6 +122,18 @@ proc launch(): Future[void] {.async.} =
   try:
     let config = readJson("/episode/config.json")
     validateConfig(config)
+    for slot in 0..1:
+      try:
+        modules[slot] = loadPolicy(cstring("/episode/input/seat" & $slot & "/policy"))
+      except PolicyError as error:
+        let failure = %*{"failed_policy_index": slot, "message": error.msg}
+        publishJson("/episode/player_failure.json", failure)
+        let failureUri = envValue("COGAME_PLAYER_FAILURE_URI")
+        if not failureUri.isNil and failureUri.len > 0:
+          proc filePath(value: cstring): cstring {.importjs: "require('url').fileURLToPath(#)".} =
+            ## Resolve the trusted platform's failure artifact URI.
+          publishJson(filePath(failureUri), failure)
+        raise
     let db = smallWorld(readJson(TemplatePath))
     for collection in db["collections"]:
       if collection["name"].getStr == "env":

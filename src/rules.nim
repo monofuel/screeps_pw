@@ -4,6 +4,9 @@ import
 const
   CompetitionTicks* = 6000
   PolicyBytes* = 5 * 1024 * 1024
+  PackageBytes* = 16 * 1024 * 1024
+  ArchiveBytes* = 17 * 1024 * 1024
+  PackageFiles* = 256
   PolicySizeMessage* = "Policy must contain 1 to " & $PolicyBytes & " bytes (5 MiB maximum)"
   LogBytes* = 10 * 1024 * 1024
   WorldRooms* = ["W1N1", "W1N2", "W1N3", "W1N4",
@@ -12,6 +15,8 @@ const
     "W4N1", "W4N2", "W4N3", "W4N4"]
   StartRooms* = ["W3N3", "W2N2"]
   StartPositions* = [(32, 9), (17, 40)]
+
+type PolicyError* = object of ValueError
 
 proc require*(condition: bool, message: string) =
   ## Reject invalid contracts in release builds.

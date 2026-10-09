@@ -83,9 +83,12 @@ A killed or incomplete episode does not produce a completed game result.
 
 ## Submit a policy
 
-Supply one self-contained JavaScript file, at most **5 MiB (5,242,880 bytes)**,
-exporting `loop`. The file-byte limit is inclusive and enforced identically by
-the local match runner and hosted game. Empty files are rejected.
+Supply a self-contained JavaScript file exporting `loop`, at most
+**5 MiB (5,242,880 bytes)**, or a **ZIP32 package** with `main.js` at its root.
+ZIPs may contain up to **256 flat files**, **16 MiB (16,777,216 bytes) total
+unpacked contents**, and **17 MiB (17,825,792 bytes) of archive bytes**.
+All limits are inclusive and shared by local and hosted runners. Empty uploads
+are rejected. Packages are recognized by content, independently of filename.
 
 ```javascript
 module.exports.loop = function () {
@@ -101,8 +104,39 @@ processing. Submitted code is account code, not a server mod, npm package, or
 native process. It runs in the official per-account sandbox. Private logs are
 bounded to 10 MiB per seat and never included in the public replay.
 
-Bundled players are the full World colony example and a Nim-generated idle
-control. Multi-module uploads and human gameplay controls are outside v1.
+ZIP JavaScript files become text modules; every other file becomes a binary
+module. Module names omit the final extension: `helper.js` is `require('helper')`,
+`brain.wasm` is `require('brain')`, and `weights.bin` is `require('weights')`.
+Binary modules return an ArrayBuffer; instantiate WASM with `WebAssembly.Module`
+and `WebAssembly.Instance`, or read data with a typed array. JSON files are
+binary resources too; parse their decoded text in your bot if needed.
+
+Use flat ASCII filenames containing letters, numbers, dots, underscores or
+hyphens, at most 255 bytes. Leading dots and repeated dots are rejected.
+Stored and Deflate ZIP compression are supported, including data descriptors.
+Nested paths, duplicate filenames or module names, symlinks, directories,
+encryption, multi-volume archives and ZIP64 are rejected. Names `__proto__`,
+`prototype`, `constructor` and `lodash` are reserved. Archive contents are
+validated and decompressed with bounded output before account code executes.
+Dependencies must be bundled into these modules; npm installation, host file
+access and external ML runtimes are not provided. WASM inference uses the
+existing account CPU and memory budgets.
+
+The [WASM example](players/wasm/main.nim) is a small independent bot combining
+integer addition in WASM, another JavaScript module and binary bytes to spawn
+`Zip13`. Build it without Docker:
+
+```sh
+make wasm-example
+uv tool run --from 'coworld[auth]==0.1.56' coworld upload-policy --file build/players/wasm.zip
+```
+
+The SDK also packages directories passed to `--file`; supply a directory with
+the same flat layout. For local matches use `build/players/wasm.zip` as either
+policy argument. The hosted package bundles the frozen public colony snapshot
+and WASM example; the idle control remains available in this repository for
+local checks. The colony snapshot is not synchronized with newer private bot
+work. Human gameplay controls remain outside this MVP.
 
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/), sign into
 your own Softmax account, upload a policy, and submit the returned version:
@@ -152,8 +186,9 @@ Matches use disposable storage, no network, and no staging volume or game/admin
 ports. Cancellation cleans up the episode container.
 
 `make upload-integration` builds the package and checks actual game-hosted
-staging with files above the old 2 MiB cap and at exactly 5 MiB, plus rejection
-of empty and oversized files. These checks use disposable local episodes.
+staging at JavaScript and ZIP size boundaries, WASM execution in both seats,
+and failed-seat attribution for invalid packages. These checks use disposable
+local episodes.
 
 `make deps` creates a separate Nimby workspace under
 `~/.local/share/screeps-pw/deps/`. It does not move shared workspace checkouts.
@@ -234,7 +269,7 @@ make certify
 ```
 
 Set `VERSION` for later immutable releases, for example
-`make package VERSION=0.1.5`.
+`make package VERSION=0.1.6`.
 
 Run `make deps` and `make engine` first. Packaging rebuilds the adapter on top
 of the pinned public engine runtime. Building and certifying locally do not
@@ -243,8 +278,8 @@ publish a release or change the running league.
 For a viewer-only package, pass `GAME_IMAGE` to reuse an existing game image.
 For example, the viewer-only 0.1.4 release used
 `make package VERSION=0.1.4 GAME_IMAGE=screeps-pw:0.1.3`.
-The matched starting rooms and 5 MiB limit in 0.1.5 require a rebuilt game image;
-package them with `make package VERSION=0.1.5` without `GAME_IMAGE`.
+The ZIP module loader in 0.1.6 requires a rebuilt game image; package it with
+`make package VERSION=0.1.6` without `GAME_IMAGE`.
 
 Packaging uses public `coworld[auth]==0.1.56` through an isolated uv environment.
 `nim r tools/sdk.nim ...` wraps the same CLI. Maintainers may explicitly set

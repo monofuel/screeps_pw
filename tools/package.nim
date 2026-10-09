@@ -6,7 +6,7 @@ import
 proc main() =
   ## Stage the native image, verified file players, and generated viewer hook.
   require(paramCount() <= 2, "Usage: package [MAJOR.MINOR.PATCH [EXISTING_GAME_IMAGE]]")
-  let version = if paramCount() >= 1: paramStr(1) else: "0.1.5"
+  let version = if paramCount() >= 1: paramStr(1) else: "0.1.6"
   let parts = version.split('.')
   require(parts.len == 3, "Version must contain major, minor and patch")
   for part in parts:
@@ -34,6 +34,7 @@ proc main() =
       "ENGINE_IMAGE=" & DefaultImage, "--tag", image, Root])
   for player in ["baseline", "idle"]:
     copyFile(Root / "build/players" / (player & ".js"), stage / "players" / (player & ".js"))
+  copyFile(Root / "build/players/wasm.zip", stage / "players/wasm.zip")
   run(["nim", "c", "--out:" & stage / "tools/build_replay_viewer.sh", "tools/viewer.nim"])
   let manifest = parseFile(Root / "coworld/coworld_manifest_template.json")
   manifest["game"]["docs"]["readme"]["value"] = %readFile(Root / "README.md")

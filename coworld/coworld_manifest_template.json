@@ -38,7 +38,7 @@
     },
     "replay_viewer": {"bundle": "replay-viewer", "replay_compression": "identity"},
     "protocols": {
-      "player": {"type": "text", "value": "Upload one self-contained JavaScript module exporting loop, from 1 through 5242880 bytes (5 MiB maximum, inclusive). The official Screeps World runner supplies Game, Memory, RawMemory, native visibility and intents. Each account receives 20 CPU and an empty initial bucket. Console output and errors remain private."},
+      "player": {"type": "text", "value": "Upload a JavaScript module exporting loop (1 through 5242880 bytes, 5 MiB inclusive), or a ZIP32 package with main.js at its root, up to 256 flat files, 16777216 total unpacked bytes (16 MiB), and 17825792 archive bytes (17 MiB). Stored and Deflate compression are supported. JavaScript files are text modules; all other files are binary modules. Strip the final extension for require: brain.wasm becomes require('brain'). Nested paths, symlinks, duplicate module names, encryption and ZIP64 are rejected. The official Screeps World runner supplies Game, Memory, RawMemory, native visibility and intents. Each account receives 20 CPU and an empty initial bucket. Console output and errors remain private."},
       "global": {"type": "text", "value": "GET /client/global serves episode status. /global sends one JSON status and echoes Ping payloads with Pong. Completed episodes use the static 3D replay viewer. No gameplay traffic uses WebSockets."}
     },
     "docs": {"readme": {"type": "text", "value": "Filled by Nim package automation."}}
@@ -46,15 +46,15 @@
   "player": [
     {"id": "baseline", "name": "Colony baseline", "type": "player", "file": "players/baseline.js",
       "description": "Existing Nim World colony bot, compiled to native Screeps JavaScript."},
-    {"id": "idle", "name": "Idle control", "type": "player", "file": "players/idle.js",
-      "description": "Takes no actions; a controlled comparison opponent."}
+    {"id": "wasm", "name": "WASM package example", "type": "player", "file": "players/wasm.zip",
+      "description": "Tiny purpose-built example combining JavaScript, WASM addition and binary data to spawn a creep."}
   ],
   "variants": [{"id": "competition", "name": "6000-tick GCL race",
     "description": "One shared fixed 4x4 World, two fresh accounts two room transitions apart, highest earned account GCL points wins.",
     "game_config": {"players": [{"name": "Blue"}, {"name": "Red"}], "seed": 2026, "max_ticks": 6000}}],
   "certification": {
-    "game_config": {"players": [{"name": "Colony baseline"}, {"name": "Idle control"}],
+    "game_config": {"players": [{"name": "Colony baseline"}, {"name": "WASM package example"}],
       "seed": 2026, "max_ticks": 600},
-    "players": [{"player_id": "baseline"}, {"player_id": "idle"}]
+    "players": [{"player_id": "baseline"}, {"player_id": "wasm"}]
   }
 }

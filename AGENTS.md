@@ -19,8 +19,9 @@ package. It is separate from our playing bots and bot-research dashboard.
   diagonal rooms W3N3 and W2N2. Do not move the starts to an outer corner.
 - Match the two home rooms by rotating W2N2 into W3N3, including both sources,
   controller, mineral and spawn placement. The surrounding world stays asymmetric.
-- Accept a single policy file of 1 through 5,242,880 bytes (5 MiB), using the
-  shared policy size contract in both local and game-hosted runners.
+- Accept raw JavaScript of 1 through 5,242,880 bytes (5 MiB), or ZIP32 packages
+  with root main.js, up to 256 flat files, 16 MiB unpacked and 17 MiB archived.
+  Use shared normalization for local and hosted matches and bound decompression.
 - Preserve existing user work. Commit, push, deploy, upload a Coworld release,
   or create/enable a hosted league only when requested.
 
@@ -30,9 +31,11 @@ package. It is separate from our playing bots and bot-research dashboard.
   finite match rules, replay capture/viewer, Coworld packaging, and integration
   tests. Use Screeps' existing JavaScript runtime; do not add Bassy or a new
   observation/action language.
-- `players/colony` contains a public snapshot of the author's World bot,
+- `players/colony` contains a frozen public snapshot of the author's World bot,
   reusable `botlib` behaviors, and World bindings. Reuse those behaviors rather
   than copying new bespoke bots. Keep the league adapter separate from strategy.
+- Do not refresh this snapshot from private repositories or copy newer private
+  bot changes. `players/wasm` is an independent, purpose-built package example.
 - `runtime/shared` contains the small shared Node bridge, JSON decoder and
   completed-turn scheduler. The build must work without private sibling repos.
 - The upstream workspace repositories `screeps_bot`, `screeps_lib`, and

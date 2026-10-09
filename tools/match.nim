@@ -1,6 +1,6 @@
 import
   std/[json, monotimes, os, parseopt, posix, strutils, tempfiles, times],
-  rules,
+  policyUpload, rules,
   ./common
 
 const DefaultImage* = "public.ecr.aws/q5f4m8t9/cogames@sha256:a99178510203da99bf58b48d545c3b3e025a33aeb78f51f0262d543516a9c5d6"
@@ -28,10 +28,10 @@ proc runMatch*(policies: array[2, string], ticks = CompetitionTicks, seed = 2026
   createDir(directory / "private")
   var hashes = newJArray()
   for slot in 0..1:
-    rules.require(fileExists(policies[slot]) and validPolicySize(getFileSize(policies[slot])),
-      PolicySizeMessage)
+    validatePolicyUpload(policies[slot])
     createDir(directory / "input/seat" & $slot)
-    copyFile(policies[slot], directory / "input/seat" & $slot / "main.js")
+    copyFile(policies[slot], directory / "input/seat" & $slot / "policy")
+    writeFile(directory / "input/seat" & $slot / "main.js", "")
     hashes.add %hashFile(policies[slot])
     writeFile(directory / "private/seat-" & $slot & ".log", "")
   for name in ["launcher", "control"]:
