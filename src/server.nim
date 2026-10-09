@@ -34,9 +34,9 @@ proc prepareEpisode() =
   for slot in 0..1:
     let seat = seats["seats"][slot]
     let policy = filePath(seat["file_uri"].getStr)
-    if not fileExists(policy) or getFileSize(policy) notin 1..PolicyBytes:
+    if not fileExists(policy) or not validPolicySize(getFileSize(policy)):
       publish(filePath(getEnv("COGAME_PLAYER_FAILURE_URI")), %*{
-        "failed_policy_index": slot, "message": "Policy must contain 1 to 2097152 bytes"})
+        "failed_policy_index": slot, "message": PolicySizeMessage})
       raise newException(ValueError, "Invalid player file")
     createDir("/episode/input/seat" & $slot)
     copyFile(policy, "/episode/input/seat" & $slot / "main.js")

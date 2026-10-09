@@ -47,6 +47,29 @@ suite "Disposable official World":
         check entity["store"]["energy"].getInt == 300
         check entity["room"].getStr in StartRooms
     check spawns == 2
+    var homeTerrain: array[2, string]
+    for entry in initial["terrain"]:
+      for slot, home in StartRooms:
+        if entry["room"].getStr == home: homeTerrain[slot] = entry["terrain"].getStr
+    for index in 0..<2500: check homeTerrain[0][index] == homeTerrain[1][2499 - index]
+    for home in StartRooms:
+      var sources = 0
+      for entity in initial["objects"]:
+        if entity["room"].getStr == home and entity["type"].getStr == "source": inc sources
+      check sources == 2
+    for entity in initial["objects"]:
+      if entity["room"].getStr != StartRooms[0] or
+          entity["type"].getStr notin ["source", "controller", "mineral", "spawn"]: continue
+      var matches = 0
+      for counterpart in initial["objects"]:
+        if counterpart["room"].getStr != StartRooms[1] or counterpart["type"] != entity["type"] or
+            counterpart["x"].getInt != 49 - entity["x"].getInt or
+            counterpart["y"].getInt != 49 - entity["y"].getInt: continue
+        inc matches
+        for key in ["energy", "energyCapacity", "ticksToRegeneration", "mineralType",
+            "mineralAmount", "density", "level", "progress", "store"]:
+          check entity.getOrDefault(key) == counterpart.getOrDefault(key)
+      check matches == 1
     var startingCells: seq[(int, int)]
     for user in initial["users"]:
       if user.getOrDefault("username").getStr in ["Seat0", "Seat1"]:
@@ -80,6 +103,17 @@ suite "Disposable official World":
     run(["nim", "js", "tests/fixtures/navigation.nim"])
     let directory = runMatch([Root / "build/fixtures/navigation.js", Root / "build/players/idle.js"], 300)
     check "SMALL_WORLD_NAVIGATION_OK" in readFile(directory / "private/seat-0.log")
+    check "Error" notin readFile(directory / "private/seat-0.log")
+    let reverse = runMatch([Root / "build/players/idle.js", Root / "build/fixtures/navigation.js"], 300)
+    check "SMALL_WORLD_NAVIGATION_OK" in readFile(reverse / "private/seat-1.log")
+    check "Error" notin readFile(reverse / "private/seat-1.log")
+  test "The official runner loads a policy at the full 5 MiB limit":
+    let path = getHomeDir() / ".local/share/screeps-pw/large-policy.js"
+    let idle = readFile(Root / "build/players/idle.js")
+    writeFile(path, idle & "\n/*" & repeat(' ', PolicyBytes - idle.len - 5) & "*/")
+    check getFileSize(path) == PolicyBytes
+    let directory = runMatch([path, Root / "build/players/idle.js"], 3)
+    check parseFile(directory / "results.json")["ticks"].getInt == 3
     check "Error" notin readFile(directory / "private/seat-0.log")
   test "Policy errors stay private and never terminate native gameplay":
     run(["nim", "js", "tests/fixtures/throwing.nim"])

@@ -41,7 +41,7 @@ CommonJS file. See the [official Screeps API](https://docs.screeps.com/api/).
 | --- | --- |
 | World | Fixed 4×4 private World: 16 rooms, W1–W4 / N1–N4, sealed outer exits |
 | Players | Two independent accounts; starter bots and their colonies removed |
-| Starts | Center cells (1,1) and (2,2), indexed from the viewer's top-left: seat 0 W3N3 (37,31), seat 1 W2N2 (17,40) |
+| Starts | Center cells (1,1) and (2,2), indexed from the viewer's top-left: seat 0 W3N3 (32,9), seat 1 W2N2 (17,40) |
 | Assets | One spawn containing 300 energy, RCL1, GCL1, empty Memory |
 | Account CPU | 20 CPU; empty initial bucket; native replenishment and execution/memory guards |
 | Duration | Exactly 6,000 completed ticks |
@@ -52,14 +52,18 @@ CommonJS file. See the [official Screeps API](https://docs.screeps.com/api/).
 | Gameplay | Native visibility, API, intents, economy and combat |
 | NPCs | Optional NPC spawning jobs disabled for this fixture |
 
-The map is asymmetric. League duels evaluate both starting assignments. Each
+The starting rooms match under a 180° rotation; the surrounding map is asymmetric.
+League duels evaluate both starting assignments. Each
 episode retains its own scores; there is no survival bonus, elimination win, or
 research-benchmark qualification gate. GCL points are cumulative account points,
 not integer GCL levels, controller levels, or current-level progress.
-The map retains the official default terrain within those 16 rooms, adds short
-three-tile-wide entrances connecting every adjacent pair, and seals the outer
-border. W3N3 has one source and W2N2 has two; paired starting assignments cover
-the native resource asymmetry. The starts are two room transitions apart.
+W2N2 supplies the two-source home-room template. W3N3 copies its terrain,
+sources, controller and mineral under `(x,y) -> (49-x,49-y)`, with matching
+resource quantities and regeneration state. Spawn placement rotates too.
+Both homes have four-tile entrances at border coordinates 23–26; adjoining
+neighbor entrances are aligned and connected. Other rooms retain their native
+resources and terrain apart from exit corridors. Every adjacent pair connects,
+and the outer border is sealed. The starts are two room transitions apart.
 Native terrain and accessible-room caches are rebuilt before play.
 The seed is recorded as fixture metadata; the map is fixed and
 does not reseed native JavaScript randomness.
@@ -79,7 +83,9 @@ A killed or incomplete episode does not produce a completed game result.
 
 ## Submit a policy
 
-Supply one self-contained JavaScript file, at most 2 MiB, exporting `loop`:
+Supply one self-contained JavaScript file, at most **5 MiB (5,242,880 bytes)**,
+exporting `loop`. The file-byte limit is inclusive and enforced identically by
+the local match runner and hosted game. Empty files are rejected.
 
 ```javascript
 module.exports.loop = function () {
@@ -144,6 +150,10 @@ Coworld package. Its upstream Screeps revision is
 and Node 22.23.2. No private repositories or registry login are required.
 Matches use disposable storage, no network, and no staging volume or game/admin
 ports. Cancellation cleans up the episode container.
+
+`make upload-integration` builds the package and checks actual game-hosted
+staging with files above the old 2 MiB cap and at exactly 5 MiB, plus rejection
+of empty and oversized files. These checks use disposable local episodes.
 
 `make deps` creates a separate Nimby workspace under
 `~/.local/share/screeps-pw/deps/`. It does not move shared workspace checkouts.
@@ -224,15 +234,17 @@ make certify
 ```
 
 Set `VERSION` for later immutable releases, for example
-`make package VERSION=0.1.4`.
+`make package VERSION=0.1.5`.
 
 Run `make deps` and `make engine` first. Packaging rebuilds the adapter on top
 of the pinned public engine runtime. Building and certifying locally do not
 publish a release or change the running league.
 
 For a viewer-only package, pass `GAME_IMAGE` to reuse an existing game image.
-For example, `make package VERSION=0.1.4 GAME_IMAGE=screeps-pw:0.1.3` updates
-the viewer while preserving the certified 0.1.3 simulation image.
+For example, the viewer-only 0.1.4 release used
+`make package VERSION=0.1.4 GAME_IMAGE=screeps-pw:0.1.3`.
+The matched starting rooms and 5 MiB limit in 0.1.5 require a rebuilt game image;
+package them with `make package VERSION=0.1.5` without `GAME_IMAGE`.
 
 Packaging uses public `coworld[auth]==0.1.56` through an isolated uv environment.
 `nim r tools/sdk.nim ...` wraps the same CLI. Maintainers may explicitly set
@@ -306,5 +318,5 @@ Project code is licensed under [MIT](LICENSE); upstream code and assets retain
 their original notices.
 
 See [THIRD_PARTY.md](THIRD_PARTY.md) for pinned code/assets and license notices.
-Persistent worlds, custom balanced maps, additional players, richer models,
+Persistent worlds, configurable or fully symmetric maps, additional players, richer models,
 live visualization, and additional submission formats are later work.

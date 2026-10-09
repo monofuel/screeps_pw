@@ -3,18 +3,22 @@ import
 
 const
   CompetitionTicks* = 6000
-  PolicyBytes* = 2 * 1024 * 1024
+  PolicyBytes* = 5 * 1024 * 1024
+  PolicySizeMessage* = "Policy must contain 1 to " & $PolicyBytes & " bytes (5 MiB maximum)"
   LogBytes* = 10 * 1024 * 1024
   WorldRooms* = ["W1N1", "W1N2", "W1N3", "W1N4",
     "W2N1", "W2N2", "W2N3", "W2N4",
     "W3N1", "W3N2", "W3N3", "W3N4",
     "W4N1", "W4N2", "W4N3", "W4N4"]
   StartRooms* = ["W3N3", "W2N2"]
-  StartPositions* = [(37, 31), (17, 40)]
+  StartPositions* = [(32, 9), (17, 40)]
 
 proc require*(condition: bool, message: string) =
   ## Reject invalid contracts in release builds.
   if not condition: raise newException(ValueError, message)
+
+proc validPolicySize*(bytes: int64): bool =
+  bytes in 1..PolicyBytes
 
 proc validateConfig*(config: JsonNode) =
   ## Require a finite two-seat episode.

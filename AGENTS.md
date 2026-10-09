@@ -17,6 +17,10 @@ package. It is separate from our playing bots and bot-research dashboard.
   or broader game modes unless requested.
 - Start the players at zero-based viewer cells (1,1) and (2,2), the central
   diagonal rooms W3N3 and W2N2. Do not move the starts to an outer corner.
+- Match the two home rooms by rotating W2N2 into W3N3, including both sources,
+  controller, mineral and spawn placement. The surrounding world stays asymmetric.
+- Accept a single policy file of 1 through 5,242,880 bytes (5 MiB), using the
+  shared policy size contract in both local and game-hosted runners.
 - Preserve existing user work. Commit, push, deploy, upload a Coworld release,
   or create/enable a hosted league only when requested.
 

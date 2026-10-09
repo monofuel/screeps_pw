@@ -10,6 +10,8 @@ var
 proc roomPosition(x, y: int, room: cstring): JsObject {.importjs: "new RoomPosition(#, #, #)".}
 
 proc loop() =
+  let home = game.spawns.Spawn1.pos.roomName.to(cstring)
+  let destination = if home == cstring(StartRooms[0]): cstring(StartRooms[1]) else: cstring(StartRooms[0])
   let exits = game.map.describeExits("W1N1".cstring)
   doAssert exits["3"].isNil and exits["5"].isNil
   doAssert exits["1"].to(cstring) == "W1N2".cstring
@@ -28,9 +30,9 @@ proc loop() =
     discard game.spawns.Spawn1.spawnCreep(toJs(["move".cstring]), "MapScout")
   let scout = game.creeps.MapScout
   if not scout.isNil:
-    discard scout.moveTo(roomPosition(25, 25, cstring(StartRooms[1])))
+    discard scout.moveTo(roomPosition(25, 25, destination))
   if game.time.to(int) == 300:
-    doAssert not scout.isNil and scout.pos.roomName.to(cstring) == cstring(StartRooms[1])
+    doAssert not scout.isNil and scout.pos.roomName.to(cstring) == destination
     console.log("SMALL_WORLD_NAVIGATION_OK")
 
 module.exports.loop = loop

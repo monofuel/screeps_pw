@@ -38,7 +38,7 @@
     },
     "replay_viewer": {"bundle": "replay-viewer", "replay_compression": "identity"},
     "protocols": {
-      "player": {"type": "text", "value": "Upload one self-contained JavaScript module exporting loop, at most 2 MiB. The official Screeps World runner supplies Game, Memory, RawMemory, native visibility and intents. Each account receives 20 CPU and an empty initial bucket. Console output and errors remain private."},
+      "player": {"type": "text", "value": "Upload one self-contained JavaScript module exporting loop, from 1 through 5242880 bytes (5 MiB maximum, inclusive). The official Screeps World runner supplies Game, Memory, RawMemory, native visibility and intents. Each account receives 20 CPU and an empty initial bucket. Console output and errors remain private."},
       "global": {"type": "text", "value": "GET /client/global serves episode status. /global sends one JSON status and echoes Ping payloads with Pong. Completed episodes use the static 3D replay viewer. No gameplay traffic uses WebSockets."}
     },
     "docs": {"readme": {"type": "text", "value": "Filled by Nim package automation."}}

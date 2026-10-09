@@ -28,8 +28,8 @@ proc runMatch*(policies: array[2, string], ticks = CompetitionTicks, seed = 2026
   createDir(directory / "private")
   var hashes = newJArray()
   for slot in 0..1:
-    rules.require(fileExists(policies[slot]) and getFileSize(policies[slot]) in 1..PolicyBytes,
-      "Policy must be an existing file of at most 2 MiB")
+    rules.require(fileExists(policies[slot]) and validPolicySize(getFileSize(policies[slot])),
+      PolicySizeMessage)
     createDir(directory / "input/seat" & $slot)
     copyFile(policies[slot], directory / "input/seat" & $slot / "main.js")
     hashes.add %hashFile(policies[slot])

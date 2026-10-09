@@ -1,9 +1,9 @@
 .DEFAULT_GOAL := build
 NIM ?= nim
-VERSION ?= 0.1.4
+VERSION ?= 0.1.5
 GAME_IMAGE ?=
 
-.PHONY: deps engine build test integration viewer browser-test director-browser-test package certify check
+.PHONY: deps engine build test integration upload-integration viewer browser-test director-browser-test package certify check
 deps:
 	$(NIM) r tools/deps.nim
 engine:
@@ -21,6 +21,8 @@ test:
 	$(NIM) r tests/test_worldFixture.nim
 integration: build
 	$(NIM) r tests/test_integration.nim
+upload-integration: package
+	$(NIM) r tests/test_uploadStaging.nim
 viewer:
 	$(NIM) r tools/viewer.nim
 browser-test:

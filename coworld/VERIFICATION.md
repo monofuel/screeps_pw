@@ -311,3 +311,62 @@ The actual hosted viewer passes the browser interaction checks against smoke
 The upload transcript is `~/.local/share/screeps-pw/auto-view-upload.log`, and
 the requested fresh round's acknowledgement is
 `~/.local/share/screeps-pw/auto-view-trigger-round.json`.
+
+## Matched home rooms and 5 MiB policies — 0.1.5
+
+W3N3 now copies W2N2's terrain, two sources, controller and mineral under a
+180-degree rotation. Spawn positions are `(32,9)` and `(17,40)` in the same
+central rooms. Home-room entrances occupy border tiles 23–26, with matching
+neighbor entrances. Other rooms retain their resources and layouts apart from
+exit connections; the surrounding world remains asymmetric. Account budgets,
+starting assets, score rules and match horizon are unchanged.
+
+The upload limit is 5,242,880 file bytes, inclusive. Local and game-hosted
+staging use the same size predicate and error message. Empty files are rejected.
+The limit is a single-file artifact contract; Screeps' ordinary code-upload HTTP
+endpoint separately measures serialized module length.
+
+All 22 unit checks and nine disposable-engine checks pass. They verify rotated
+terrain and entities, matching source state, unique IDs, database indexes,
+accessible harvesting tiles, sealed outer borders, both directions of native
+travel and native execution of an exact-5-MiB policy. `make upload-integration`
+passes two packaged-game checks: both seats load files above the former limit,
+including exactly 5 MiB; empty and oversized policies report the correct failed
+seat and do not publish normal results. Native checks, `make check`, the WASM
+build, and full-replay browser interactions pass.
+
+Two concurrent full 6,000-tick baseline self-play matches both score
+`[9667,10012]`. Each colony finishes with its original spawn, RCL2 and 13 creeps;
+neither has a policy/runtime error. These are growth diagnostics, not proof of
+equal outcomes or a fully symmetric world. The runs take 195.584 and 195.932
+seconds; artifacts are respectively:
+
+- `~/.local/share/screeps-pw/fair-selfplay-1/20261009T192352Z-yXyg6Vf5/`
+- `~/.local/share/screeps-pw/fair-selfplay-2/20261009T192352Z-rdSN8nFF/`
+
+The baseline remains
+`e802d48f0277ca04d47f744e6fe099ec708afbdccbe0684f4bc76e679295f54f`.
+The frozen fixture hash is
+`69a868ac4da24617fe6b0587ec442fc305761c855b02422b16189f653be03e3a`;
+launcher and control hashes are
+`86d15a7dbe5411eb6db6159eaad100eef9f9cbf67433f1085b40ca6fa601dba8`
+and `d2142a476efd19d14b5aba96cbcd6aa6227fa0409916fd3b4863374669ffa3b4`.
+
+The rebuilt game image is
+`sha256:5b531eab8739acac586e6e5e754d9d6560d0d6177c90609d04bb25b8b765f372`.
+Local certification passes all ten steps; artifacts are at
+`~/.local/share/screeps-pw/certification/tmp/coworld-cert-kza90r38/`.
+Browser artifacts are at `~/.local/share/screeps-pw/browser/check-InyJv8Rj/`,
+and the verified new layout is pictured in `docs/viewer.png`.
+
+```sh
+make test
+make check
+nim check src/worldFixture.nim
+make integration
+make upload-integration VERSION=0.1.5
+make certify
+build/match build/players/baseline.js build/players/baseline.js --output:/home/monofuel/.local/share/screeps-pw/fair-selfplay-1
+build/match build/players/baseline.js build/players/baseline.js --output:/home/monofuel/.local/share/screeps-pw/fair-selfplay-2
+make browser-test REPLAY=~/.local/share/screeps-pw/fair-selfplay-1/20261009T192352Z-yXyg6Vf5/match.replay
+```

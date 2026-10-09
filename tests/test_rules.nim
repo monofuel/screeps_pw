@@ -3,6 +3,11 @@ import
   rules
 
 suite "GCL race contract":
+  test "Upload limit accepts large policies and rejects empty or oversized files":
+    check not validPolicySize(0)
+    check validPolicySize(2 * 1024 * 1024 + 1)
+    check validPolicySize(5 * 1024 * 1024)
+    check not validPolicySize(5 * 1024 * 1024 + 1)
   test "Grants are excluded and cumulative points survive level transitions":
     let result = matchResult([1000.0, 0.0], [1050.0, 40.0], 6000, 6000, 2026)
     check result["scores"] == %*[50.0, 40.0]
