@@ -66,7 +66,7 @@ proc installTiming*(config: JsObject) =
   ## Record per-process stage and storage timing when PW_TIMING is set.
   let enabled = envValue("PW_TIMING")
   if enabled.isNil or enabled != "1": return
-  path = "/episode/internal/timing.json"
+  path = episodePath("internal/timing.json")
   wrapRequests()
   for event in ["mainLoopStage", "runnerLoopStage", "processorLoopStage"]:
     track(config, event)

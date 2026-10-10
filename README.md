@@ -298,7 +298,10 @@ Packaging uses public `coworld[auth]==0.1.56` through an isolated uv environment
 `d9d2a9a91131e7ef2f7c9ef6ac35c53775a5a386`; its adjacent `softmax-cli` package
 must also be present. This override is optional.
 
-The game image owns both policy VMs and the engine process. No nested Docker
+The game image owns both policy VMs and the engine process. Each server-run match
+stages its files in its own temporary folder under `TMPDIR`, passed to the runtime
+as `PW_EPISODE` and `PW_WORLD`, so one container can run several matches at once.
+Without those variables the runtime uses `/episode` and `/world`. No nested Docker
 or separate player pods are required. The package declares the
 `coworld-player-seats/2` file-player contract, a 1,500-tick competition variant,
 a 600-tick certification fixture, private seat logs/status, a health endpoint,

@@ -1,5 +1,5 @@
 import
-  std/[atomics, json, os, osproc, streams, strutils, uri],
+  std/[atomics, json, os, osproc, streams, strutils, tempfiles, uri],
   mummy,
   policyUpload, rules
 
@@ -19,18 +19,23 @@ proc publish(path: string, value: JsonNode) =
 
 proc prepareEpisode() =
   ## Stage verified policies and equal tournament inputs.
+  let root = createTempDir("screeps-pw-", "")
+  let episode = root / "episode"
+  putEnv("PW_EPISODE", episode)
+  putEnv("PW_WORLD", root / "world")
+  createDir(root / "world")
   let config = parseFile(filePath(getEnv("COGAME_CONFIG_URI")))
   validateConfig(config)
   let seats = parseFile(filePath(getEnv("COGAME_PLAYER_SEATS_URI")))
   require(seats["schema"].getStr in ["coworld-player-seats/1", "coworld-player-seats/2"] and
     seats["seats"].len == 2, "Expected two game-hosted seats")
-  for directory in ["input", "private", "internal"]: createDir("/episode" / directory)
+  for directory in ["input", "private", "internal"]: createDir(episode / directory)
   for slot in 0..1:
     let seat = seats["seats"][slot]
     require(seat["slot"].getInt == slot, "Seat order mismatch")
     let log = filePath(seat["log_uri"].getStr)
     writeFile(log, "")
-    writeFile("/episode/private/seat-" & $slot & ".log", "")
+    writeFile(episode / "private/seat-" & $slot & ".log", "")
   for slot in 0..1:
     let seat = seats["seats"][slot]
     let policy = filePath(seat["file_uri"].getStr)
@@ -41,29 +46,29 @@ proc prepareEpisode() =
       publish(filePath(getEnv("COGAME_PLAYER_FAILURE_URI")), %*{
         "failed_policy_index": slot, "message": error.msg})
       raise newException(ValueError, "Invalid player file")
-    createDir("/episode/input/seat" & $slot)
-    copyFile(policy, "/episode/input/seat" & $slot / "policy")
-    writeFile("/episode/input/seat" & $slot / "main.js", "")
-  writeFile("/episode/config.json", $config)
-  writeFile("/episode/seats.json", $seats)
-  writeFile("/episode/mods.json", $(%*{"mods": ["/app/runtime/control.js"],
-    "bots": {"seat0": "/episode/input/seat0", "seat1": "/episode/input/seat1"}}))
+    createDir(episode / "input/seat" & $slot)
+    copyFile(policy, episode / "input/seat" & $slot / "policy")
+    writeFile(episode / "input/seat" & $slot / "main.js", "")
+  writeFile(episode / "config.json", $config)
+  writeFile(episode / "seats.json", $seats)
+  writeFile(episode / "mods.json", $(%*{"mods": [getAppDir() / "runtime/control.js"],
+    "bots": {"seat0": episode / "input/seat0", "seat1": episode / "input/seat1"}}))
   var hashes = newJArray()
   for seat in seats["seats"]: hashes.add seat["content_hash"]
-  writeFile("/episode/metadata.json", $(%*{"version": 1, "config": config,
+  writeFile(episode / "metadata.json", $(%*{"version": 1, "config": config,
     "policySha256": hashes, "cpu": 20, "initialBucket": 0,
-    "release": parseFile("/app/release.json")}))
+    "release": parseFile(getAppDir() / "release.json")}))
   putEnv("PW_REPLAY", filePath(getEnv("COGAME_SAVE_REPLAY_URI")))
   putEnv("PW_RESULTS", filePath(getEnv("COGAME_RESULTS_URI")))
 
 proc runEpisode() {.thread.} =
   ## Supervise the engine without imposing an internal wall-clock cutoff.
-  let child = startProcess("node", args = @["/app/runtime/launcher.js"],
+  let child = startProcess("node", args = @[getAppDir() / "runtime/launcher.js"],
     options = {poUsePath, poStdErrToStdOut})
   let output = child.outputStream.readAll()
   let code = child.waitForExit()
   child.close()
-  writeFile("/episode/internal/launcher.log", output)
+  writeFile(getEnv("PW_EPISODE") / "internal/launcher.log", output)
   if code != 0:
     phase.store(3)
     stderr.writeLine("Screeps episode failed; private diagnostics retained")

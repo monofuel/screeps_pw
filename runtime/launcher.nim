@@ -18,13 +18,13 @@ proc shutdown(code: int, message = "") =
   if stopping: return
   stopping = true
   if message.len > 0:
-    publishJson("/episode/failure.json", %*{"message": message})
+    publishJson(episodePath("failure.json"), %*{"message": message})
   for child in children: discard child.kill("SIGTERM")
   exitProcess(code)
 
 proc startChild(name, path: string): JsObject =
   ## Keep official process output separate from public game logs.
-  let fd = fs.openSync(cstring("/episode/internal/" & name & ".log"), "a")
+  let fd = fs.openSync(episodePath("internal/" & name & ".log"), "a")
   let options = newJsObject()
   options.stdio = toJs(%*["ignore", fd.to(int), fd.to(int), "ipc"])
   result = require("child_process").spawn(process.execPath,
@@ -45,11 +45,11 @@ proc startChild(name, path: string): JsObject =
     if message.error.to(cstring).len > 0:
       shutdown(2, $message.error.to(cstring))
     else:
-      let seats = readJson("/episode/seats.json")
+      let seats = readJson(episodePath("seats.json"))
       if seats.hasKey("seats"):
         for seat in seats["seats"]:
           let path = seat["log_uri"].getStr
-          discard fs.copyFileSync(cstring("/episode/private/seat-" & $seat["slot"].getInt & ".log"),
+          discard fs.copyFileSync(episodePath("private/seat-" & $seat["slot"].getInt & ".log"),
             cstring(path[7..^1]))
       if seats.hasKey("player_status_uri"):
         let path = seats["player_status_uri"].getStr
@@ -58,21 +58,21 @@ proc startChild(name, path: string): JsObject =
           status["players"].add %*{"slot": slot, "state": "exited", "exit_code": 0,
             "reason": "EpisodeCompleted"}
         publishJson(cstring(path[7..^1]), status)
-      publishJson(envValue("PW_RESULTS"), readJson("/episode/completed.json"))
+      publishJson(envValue("PW_RESULTS"), readJson(episodePath("completed.json")))
       shutdown(0)
   )
 
 proc launch(): Future[void] {.async.} =
   ## Stage the world and policies, then start the single official engine process.
   try:
-    let config = readJson("/episode/config.json")
+    let config = readJson(episodePath("config.json"))
     validateConfig(config)
     for slot in 0..1:
       try:
-        modules[slot] = loadPolicy(cstring("/episode/input/seat" & $slot & "/policy"))
+        modules[slot] = loadPolicy(episodePath("input/seat" & $slot & "/policy"))
       except PolicyError as error:
         let failure = %*{"failed_policy_index": slot, "message": error.msg}
-        publishJson("/episode/player_failure.json", failure)
+        publishJson(episodePath("player_failure.json"), failure)
         let failureUri = envValue("COGAME_PLAYER_FAILURE_URI")
         if not failureUri.isNil and failureUri.len > 0:
           proc filePath(value: cstring): cstring {.importjs: "require('url').fileURLToPath(#)".} =
@@ -83,16 +83,16 @@ proc launch(): Future[void] {.async.} =
     for collection in db["collections"]:
       if collection["name"].getStr == "env":
         collection["data"][0]["data"]["mainLoopPaused"] = %"1"
-    writeText("/world/db.json", cstring($db))
-    setEnv("DB_PATH", "/world/db.json")
-    setEnv("MODFILE", "/episode/mods.json")
+    writeText(worldPath("db.json"), cstring($db))
+    setEnv("DB_PATH", worldPath("db.json"))
+    setEnv("MODFILE", episodePath("mods.json"))
     setEnv("DRIVER_MODULE", "@screeps/driver")
     # Matches have two players, so run both seats concurrently. Control tags each run
     # result with its account and lets the first run settle before others start,
     # because the official accessibleRooms cache returns undefined to a run that starts
     # during its first fetch. Keep both in place if this changes.
     setEnv("RUNNER_THREADS", "2")
-    publishJson("/world/modules.json", %modules)
+    publishJson(worldPath("modules.json"), %modules)
     discard startChild("engine", $require("path").join(jsDirname, "engine.js").to(cstring))
   except:
     shutdown(2, getCurrentExceptionMsg())

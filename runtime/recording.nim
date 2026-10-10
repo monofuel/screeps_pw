@@ -63,7 +63,7 @@ proc flush() =
   ## Compress an independent seekable chunk.
   if frames.isNil or frames.length.to(int) == 0: return
   let bytes = gzip(stringify(frames))
-  discard fs.appendFileSync("/episode/replay.chunks", bytes)
+  discard fs.appendFileSync(episodePath("replay.chunks"), bytes)
   let last = frames[frames.length.to(int) - 1]
   chunks.add %*{"start": startTick, "end": last.tick.to(int),
     "offset": offset, "length": bytes.length.to(int)}
@@ -83,7 +83,7 @@ proc beginRecording*(metadata, terrain: JsonNode) =
   frames = newArray()
   previous = newMap()
   chunks = newJArray()
-  writeText("/episode/replay.chunks", "")
+  writeText(episodePath("replay.chunks"), "")
 
 proc record*(tick: int, objects, scores: JsObject) =
   ## Capture each committed state with a keyframe every hundred ticks.
@@ -125,7 +125,7 @@ proc finishRecording*(path: string, verdict: JsonNode) =
   discard fs.writeSync(fd, buffer("SCR1"))
   discard fs.writeSync(fd, littleEndian(encoded.length.to(int)))
   discard fs.writeSync(fd, encoded)
-  let input = fs.openSync("/episode/replay.chunks", "r")
+  let input = fs.openSync(episodePath("replay.chunks"), "r")
   let blockBuffer = require("buffer").Buffer.alloc(65536)
   while true:
     let count = fs.readSync(input, blockBuffer, 0, 65536, jsNull).to(int)

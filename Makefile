@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := build
 NIM ?= nim
-VERSION ?= 0.1.10
+VERSION ?= 0.1.11
 GAME_IMAGE ?=
 LEAGUE ?= league_ac545b38-4caa-4873-a202-769697261f26
 

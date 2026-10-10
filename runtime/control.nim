@@ -37,13 +37,13 @@ proc completed(): Future[void] {.async.} =
   ## Observe committed turns and finalize the configured match length.
   try:
     if not initialized:
-      configFile = readJson("/episode/config.json")
+      configFile = readJson(episodePath("config.json"))
       horizon = configFile["max_ticks"].getInt
-      let roster = readJson("/episode/roster.json")
+      let roster = readJson(episodePath("roster.json"))
       for slot in 0..1: accounts[slot] = cstring(roster[slot]["user"].getStr)
-      let initial = readJson("/episode/initial.json")
+      let initial = readJson(episodePath("initial.json"))
       opening = points(toJs(initial["users"]))
-      beginRecording(readJson("/episode/metadata.json"), initial["terrain"])
+      beginRecording(readJson(episodePath("metadata.json")), initial["terrain"])
       record(0, toJs(initial["objects"]), pair(0, 0))
       initialized = true
     let tick = int(number(await envGet("gameTime"))) - 1
@@ -52,12 +52,12 @@ proc completed(): Future[void] {.async.} =
     let objects = await find("rooms.objects", newJsObject())
     record(tick, objects, pair(closing[0] - opening[0], closing[1] - opening[1]))
     if tick == 1 or tick mod 100 == 0:
-      publishJson("/episode/progress.json", %*{"ticks": tick})
+      publishJson(episodePath("progress.json"), %*{"ticks": tick})
     if tick == horizon:
       let verdict = matchResult(opening, closing, tick, horizon, configFile["seed"].getInt)
       finishRecording($envValue("PW_REPLAY"), verdict)
-      publishJson("/episode/progress.json", %*{"ticks": tick})
-      publishJson("/episode/completed.json", verdict)
+      publishJson(episodePath("progress.json"), %*{"ticks": tick})
+      publishJson(episodePath("completed.json"), verdict)
       await stop()
   except:
     await stop(getCurrentExceptionMsg())
@@ -107,7 +107,7 @@ proc install(config: JsObject) =
     ## Route submitted console output only to its private log.
     if stage != "saveResultStart": return
     if logs.len == 0:
-      for account in readJson("/episode/roster.json"):
+      for account in readJson(episodePath("roster.json")):
         logs[cstring(account["user"].getStr)] = cstring(account["log"].getStr)
     let user = value.pwUser.to(cstring)
     rules.require(logs.hasKey(user), "Run result has no tournament account")

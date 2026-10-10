@@ -38,13 +38,13 @@ proc prepare(modules: JsonNode): Future[void] {.async.} =
     discard await update("rooms.objects", toJs(%*{"user": account["_id"], "type": "controller"}),
       toJs(%*{"$set": {"level": 1, "progress": 0}}))
     roster.add %*{"slot": slot, "user": account["_id"],
-      "log": "/episode/private/seat-" & $slot & ".log"}
-  publishJson("/episode/roster.json", roster)
+      "log": $episodePath("private/seat-" & $slot & ".log")}
+  publishJson(episodePath("roster.json"), roster)
   let driver = require("@screeps/driver")
   discard await driver.updateAccessibleRoomsList().to(Future[JsObject])
   discard await driver.updateRoomStatusData().to(Future[JsObject])
   discard await require("@screeps/backend/lib/cli/map").updateTerrainData().to(Future[JsObject])
-  publishJson("/episode/initial.json", %*{
+  publishJson(episodePath("initial.json"), %*{
     "users": toJson(await find("users", toJs(%*{}))),
     "objects": toJson(await find("rooms.objects", toJs(%*{}))),
     "terrain": toJson(await find("rooms.terrain", toJs(%*{})))})
@@ -52,18 +52,18 @@ proc prepare(modules: JsonNode): Future[void] {.async.} =
 proc host(): Future[void] {.async.} =
   ## Run official storage, runner, processor, and coordinator in one process.
   try:
-    let fixture = readText("/world/db.json")
+    let fixture = readText(worldPath("db.json"))
     await installLocalStorage()
     discard require("@screeps/driver")
     common.configManager.load()
     common.configManager.load = proc() = discard
-    await prepare(readJson("/world/modules.json"))
-    let metadata = readJson("/episode/metadata.json")
+    await prepare(readJson(worldPath("modules.json")))
+    let metadata = readJson(episodePath("metadata.json"))
     metadata["fixtureSha256"] = %($sha256(fixture))
     metadata["engineVersion"] = %($require("@screeps/engine/package.json").version.to(cstring))
     metadata["driverVersion"] = %($require("@screeps/driver/package.json").version.to(cstring))
-    metadata["accounts"] = readJson("/episode/roster.json")
-    publishJson("/episode/metadata.json", metadata)
+    metadata["accounts"] = readJson(episodePath("roster.json"))
+    publishJson(episodePath("metadata.json"), metadata)
     discard require(EnginePath & "runner.js")
     discard require(EnginePath & "processor.js")
     discard await envSet("mainLoopPaused", toJs(%"0"))

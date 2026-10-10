@@ -102,3 +102,16 @@ proc publishJson*(path: cstring, value: JsonNode) =
   let temporary = path & ".tmp"
   writeText(temporary, cstring($value & "\n"))
   renameFile(temporary, path)
+
+proc matchFolder(name, fallback: cstring): string =
+  ## Read a per-match folder, keeping the container defaults when none is set.
+  let value = envValue(name)
+  if value.isNil or value.len == 0: $fallback else: $value
+
+proc episodePath*(name: string): cstring =
+  ## Locate a file in this match's episode folder.
+  cstring(matchFolder("PW_EPISODE", "/episode") & "/" & name)
+
+proc worldPath*(name: string): cstring =
+  ## Locate a file in this match's private world folder.
+  cstring(matchFolder("PW_WORLD", "/world") & "/" & name)

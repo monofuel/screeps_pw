@@ -1,5 +1,5 @@
 import
-  std/[json, os, osproc, streams, strutils, tempfiles, unittest],
+  std/[json, os, osproc, posix, streams, strutils, tables, tempfiles, times, unittest],
   replays, rules,
   ../tools/[common, sdk, zipPackages]
 
@@ -28,6 +28,24 @@ proc stagedEpisode(directory: string, sizes: array[2, int]): int =
     if sizes[slot] > 0:
       contents[slot] = idle & "\n/*" & repeat(' ', sizes[slot] - idle.len - 5) & "*/"
   stagedFiles(directory, contents)
+
+proc sharedEpisode(directory, port: string, policies: array[2, string], ticks: int): seq[string] =
+  ## Stage one server episode and return the environment for a shared container.
+  createDir(directory)
+  var seats = %*{"schema": "coworld-player-seats/2", "seats": [],
+    "player_status_uri": "file://" & directory / "status.json"}
+  for slot in 0..1:
+    let policy = directory / "policy-" & $slot
+    copyFile(policies[slot], policy)
+    seats["seats"].add %*{"slot": slot, "file_uri": "file://" & policy,
+      "log_uri": "file://" & directory / "seat-" & $slot & ".log", "content_hash": hashFile(policy)}
+  writeFile(directory / "config.json", $(%*{"tokens": ["a", "b"],
+    "players": [{"name": "A"}, {"name": "B"}], "seed": 2026, "max_ticks": ticks}))
+  writeFile(directory / "seats.json", $seats)
+  result = @["--env", "COGAME_HOST=127.0.0.1", "--env", "COGAME_PORT=" & port]
+  for (key, name) in [("CONFIG", "config.json"), ("PLAYER_SEATS", "seats.json"),
+      ("RESULTS", "results.json"), ("SAVE_REPLAY", "replay"), ("PLAYER_FAILURE", "failure.json")]:
+    result.add ["--env", "COGAME_" & key & "_URI=file://" & directory / name]
 
 suite "Packaged game-hosted policy staging":
   let parent = getHomeDir() / ".local/share/screeps-pw/upload-checks"
@@ -88,3 +106,33 @@ suite "Packaged game-hosted policy staging":
         check failure["failed_policy_index"].getInt == 1
         check "16 MiB" in failure["message"].getStr
         check not fileExists(directory / "episode/results.json")
+  test "Two packaged matches run concurrently in one container":
+    let directory = createTempDir("shared-", "", parent)
+    let image = parseFile(Root / "dist/coworld_manifest.json")["game"]["runnable"]["image"].getStr
+    let wasm = Root / "build/players/wasm.zip"
+    let idle = Root / "build/players/idle.js"
+    let first = sharedEpisode(directory / "a", "8080", [wasm, idle], 600)
+    let second = sharedEpisode(directory / "b", "8081", [idle, wasm], 600)
+    let container = "screeps-pw-shared-" & directory.lastPathPart.toLowerAscii()
+    discard command(@["docker", "run", "--detach", "--name", container, "--network", "none",
+      "--user", $getuid() & ":" & $getgid(), "--volume", directory & ":" & directory] & first & @[image])
+    try:
+      discard command(@["docker", "exec", "--detach"] & second & @[container, "/app/server"])
+      check not fileExists(directory / "a/results.json")
+      let deadline = epochTime() + 300
+      while not (fileExists(directory / "a/results.json") and fileExists(directory / "b/results.json")):
+        require(epochTime() < deadline, "Shared container episodes did not finish")
+        sleep(200)
+      for (name, wasmSlot) in [("a", 0), ("b", 1)]:
+        let episode = directory / name
+        check parseFile(episode / "results.json")["ticks"].getInt == 600
+        check "ZIP_WASM_OK 13" in readFile(episode / "seat-" & $wasmSlot & ".log")
+        check "ZIP_WASM_OK" notin readFile(episode / "seat-" & $(1 - wasmSlot) & ".log")
+        var replay = openReplay(readFile(episode / "replay"))
+        let account = replay.header["metadata"]["accounts"][wasmSlot]["user"]
+        var owners: seq[JsonNode]
+        for entity in replay.stateAt(6).objects.values:
+          if entity["type"].getStr == "creep": owners.add entity["user"]
+        check owners == @[account]
+    finally:
+      discard command(["docker", "rm", "--force", container])
