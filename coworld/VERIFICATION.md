@@ -550,3 +550,29 @@ this Coworld. Transcripts are `~/.local/share/screeps-pw/ticks-*.log`.
 Hosted rounds 50 and 51 run on 0.1.10. Round 51 completes all twelve episodes
 without errors, each with `max_ticks` 1,500, and a median episode run of 18 s.
 `make round` posts the league's `trigger-round` request through `tools/api.nim`.
+
+## Per-match folders — 0.1.11
+
+The game server creates a private temporary folder per match under `TMPDIR`
+and passes its `episode` and `world` folders to the runtime as `PW_EPISODE` and
+`PW_WORLD`; without them the runtime keeps `/episode` and `/world`. This lets
+one container, such as a fast-XP runner, host several matches at once.
+
+The new packaged check starts one game container as an unprivileged user, adds
+a second `/app/server` with `docker exec` while the first 600-tick match is
+running, and gives the two matches opposite WASM seats. Each keeps its own
+results, private logs and replay, with only its own WASM seat owning a creep.
+The same check fails against the 0.1.10 image, whose server cannot create
+`/episode` as that user. A default 1,500-tick baseline match replays
+identically to 0.1.10.
+
+`make test`, `make check`, `make integration` (10/10), six packaged staging
+checks and local certification (10/10) pass. Public 0.1.11 is
+`cow_ddcec01a-afbf-49ae-8ea1-fa0edafe2635`, manifest hash
+`sha256:b168bc4a7a26a0952adf335085713278e1d26dbca852228c7b74938b6bf389ba`,
+image `screeps-pw:coworld-9ae5da27c4fa`, source commit `206b8f5`. Hosted
+certification passes; its five 600-tick hosted smoke episodes complete on
+0.1.11 without errors, and the league reports this Coworld. The league's
+platform scheduler has not started a round since 23:04 UTC on 2026-10-09, so no
+league round has run on 0.1.11 yet. Transcripts are
+`~/.local/share/screeps-pw/shared-*.log`.
