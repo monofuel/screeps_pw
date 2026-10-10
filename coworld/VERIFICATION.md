@@ -572,7 +572,10 @@ checks and local certification (10/10) pass. Public 0.1.11 is
 `sha256:b168bc4a7a26a0952adf335085713278e1d26dbca852228c7b74938b6bf389ba`,
 image `screeps-pw:coworld-9ae5da27c4fa`, source commit `206b8f5`. Hosted
 certification passes; its five 600-tick hosted smoke episodes complete on
-0.1.11 without errors, and the league reports this Coworld. The league's
-platform scheduler has not started a round since 23:04 UTC on 2026-10-09, so no
-league round has run on 0.1.11 yet. Transcripts are
+0.1.11 without errors, and the league reports this Coworld. The league paused from
+23:04 UTC on 2026-10-09 because the Coworld's metered $15 daily budget was spent
+($14.73 metered, about $0.28 per round); the scheduler's budget precheck refuses
+rounds without creating them until the 07:00 UTC reset. Round 52
+(`round_8c2013db-b918-4ddb-bf2a-583ffb923c5b`) then ran on 0.1.11 at 07:19 UTC and
+completed all twelve 1,500-tick episodes without errors in 2 m 27 s. Transcripts are
 `~/.local/share/screeps-pw/shared-*.log`.
